@@ -158,7 +158,8 @@ async def play(member, query):
 	# Disconnect from current voice channel
 	await voice.disconnect()
 
-async def send_message_to_user(message=None, user: discord.User=bot.get_user(default_log_user)):
+async def send_message_to_user(message=None, user_id=default_log_user):
+	user = bot.get_user(user_id)
 	await user.send(message)
 
 # -------------------------------------------
