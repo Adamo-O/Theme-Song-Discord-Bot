@@ -35,7 +35,7 @@ min_theme_song_duration = 1.0
 max_theme_song_duration = 20.0
 default_theme_song_duration = 10.0
 
-# Default user to log in DMs
+# Default user used for confirming bot login via DM
 default_log_user = 318887467707138051
 
 # -------------------------------------------
@@ -158,6 +158,7 @@ async def play(member, query):
 	# Disconnect from current voice channel
 	await voice.disconnect()
 
+# Direct messaging for logging
 async def send_message_to_user(message, user_id=default_log_user):
 	user = bot.get_user(user_id)
 	print(user)
