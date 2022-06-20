@@ -36,7 +36,7 @@ max_theme_song_duration = 20.0
 default_theme_song_duration = 10.0
 
 # Default user to log in DMs
-default_log_user = '318887467707138051'
+default_log_user = 318887467707138051
 
 # -------------------------------------------
 # Bot setup
