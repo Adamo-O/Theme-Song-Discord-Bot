@@ -158,9 +158,12 @@ async def play(member, query):
 	# Disconnect from current voice channel
 	await voice.disconnect()
 
-async def send_message_to_user(message=None, user_id=default_log_user):
+async def send_message_to_user(message, user_id=default_log_user):
 	user = bot.get_user(user_id)
-	await user.send(message)
+	print(user)
+	if user:
+		await user.send(message)
+	return
 
 # -------------------------------------------
 # Events
@@ -168,8 +171,8 @@ async def send_message_to_user(message=None, user_id=default_log_user):
 # Runs when bot is ready
 @bot.event
 async def on_ready():
-	await send_message_to_user('Logged in as {}'.format(bot.user))
 	print('Logged in as {}'.format(bot.user))
+	await send_message_to_user('Logged in as {}'.format(bot.user))
 
 # Runs when a voice channel updates
 @bot.event
