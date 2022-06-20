@@ -28,7 +28,7 @@ YDL_OPTIONS = {
 	'format': 'bestaudio', 
 	'noplaylist': 'True', 
 	'cookiefile': 'cookies.txt'
-}
+} 
 
 # Default theme song duration variables
 min_theme_song_duration = 1.0
