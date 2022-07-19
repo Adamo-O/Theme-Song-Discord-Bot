@@ -2,8 +2,6 @@
 
 This Discord bot plays a unique theme song for each user when they enter a voice channel!
 
-[Visit the wiki](https://github.com/Adamo-O/Theme-Song-Discord-Bot/wiki) for a full breakdown of bot configuration, commands, events, and design choices.
-
 ![Theme Song Bot Demo](https://media.giphy.com/media/Hdy1v6f4awaIaRpNUL/giphy.gif)
 
 # Quick Setup 🚀
