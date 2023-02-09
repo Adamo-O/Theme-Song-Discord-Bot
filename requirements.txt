@@ -1,5 +1,6 @@
 discord.py==2.1.0
 dnspython==2.2.1
 pymongo==4.1.1
+PyNaCl==1.4.0
 requests==2.26.0
 youtube_dl==2021.6.6
