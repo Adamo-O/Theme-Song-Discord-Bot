@@ -9,15 +9,14 @@ from discord.ext import commands
 from discord.utils import get as dget
 from youtube_dl import YoutubeDL
 
-from dotenv import load_dotenv
-load_dotenv()
+# from dotenv import load_dotenv
+# load_dotenv()
 # -------------------------------------------
 # MongoDB and Heroku connections
 # -------------------------------------------
 
 uri = os.environ.get('MONGODB_URI')
-password = 'svmJHZhMU02FMcKe'
-# password = os.environ.get('MONGODB_PASSWORD')
+password = os.environ.get('MONGODB_PASSWORD')
 
 client = MongoClient(uri, username='admin', password=password)
 
