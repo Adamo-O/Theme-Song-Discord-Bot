@@ -220,20 +220,20 @@ async def print_theme(interaction: discord.Interaction, user: str = ''):
 	if user:
 		member = interaction.guild.get_member_named(user)
 		if member is None:
-			await interaction.response.send_message('Could not find user {}.'.format(user), ephemeral=True)
+			await interaction.response.send_message(f'Could not find user {user}.', ephemeral=True)
 		else:
-			print('print_theme printing theme song of other user {}'.format(member.name))
+			print(f'print_theme printing theme song of other user {member.name}')
 			theme_song = get_member_theme_song(member)
 			theme_song_duration = get_member_song_duration(member)
-			await interaction.response.send_message('🎵 {}\'s theme song is {}\n⏱ It will play for {} seconds.'.format(member.name, theme_song, str(theme_song_duration)), ephemeral=True)
+			await interaction.response.send_message(f'🎵 {member.name}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
 	else:
-		print('print_theme triggered with user: {}'.format(interaction.user.name))
+		print(f'print_theme triggered with user: {interaction.user.name}')
 		theme_song = get_member_theme_song(interaction.user)
 		theme_song_duration = get_member_song_duration(interaction.user)
-		await interaction.response.send_message('🎵 Your theme song is {}.\n⏱ It will play for {} seconds.'.format(theme_song, str(theme_song_duration)), ephemeral=True)
+		await interaction.response.send_message(f'🎵 Your theme song is {theme_song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
 
 @print_theme.autocomplete('user')
-async def user_autocomplete(interaction: discord.Interaction, current: str) -> list[discord.app_commands.Choice[str]]:
+async def user_autocomplete(interaction: discord.Interaction, current: str):
 	usernames = bot.users
 	return [discord.app_commands.Choice(name=usernames, value=usernames) for username in usernames if current.lower() in username.name.lower()]
 
@@ -243,10 +243,10 @@ async def user_autocomplete(interaction: discord.Interaction, current: str) -> l
 	description="Change user's theme song to url or search query",
 )
 async def change_theme(interaction: discord.Interaction, song: str, theme_song_duration: float=default_theme_song_duration):
-	print('change_theme triggered. Changing {}\'s theme song to {} with duration {}'.format(interaction.user.name, song, str(theme_song_duration)))
+	print(f'change_theme triggered. Changing {interaction.user.name}\'s theme song to {song} with duration {str(theme_song_duration)}')
 	set_member_theme_song(interaction.user, song)
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
-		await interaction.response.send_message('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)), ephemeral=True)
+		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
 
@@ -258,7 +258,7 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 		if float(theme_song_duration) > float(video['duration']):
 			theme_song_duration = float(video['duration'])
 		if set_member_song_duration(interaction.user, theme_song_duration):
-			await interaction.response.send_message('✅ Your theme song is now {}.\n⏱ It will play for {} seconds.'.format(song, str(theme_song_duration)), ephemeral=True)
+			await interaction.response.send_message(f'✅ Your theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
 		else:
 			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
 
@@ -267,12 +267,12 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 	description="Change user's theme song duration",
 )
 async def change_song_duration(interaction: discord.Interaction, theme_song_duration: float):
-	print('change_song_duration triggered. Changing {}\'s song duration to {}'.format(interaction.user.name, str(theme_song_duration)))
+	print(f'change_song_duration triggered. Changing {interaction.user.name}\'s song duration to {str(theme_song_duration)}')
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
-		await interaction.response.send_message('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)), ephemeral=True)
+		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
 		if set_member_song_duration(interaction.user, theme_song_duration):
-			await interaction.response.send_message('✅ Your theme song duration is now {} seconds.'.format(str(theme_song_duration)), ephemeral=True)
+			await interaction.response.send_message(f'✅ Your theme song duration is now {str(theme_song_duration)} seconds.', ephemeral=True)
 		else:
 			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
 
@@ -282,8 +282,8 @@ async def change_song_duration(interaction: discord.Interaction, theme_song_dura
 	description="Delete user's theme song",
 )
 async def delete_theme(interaction: discord.Interaction):
-	print('delete_theme triggered with user {}'.format(interaction.user.name))
-	await interaction.response.send_message('❎ Your theme song has been deleted.'.format(interaction.user.name), ephemeral=True)
+	print(f'delete_theme triggered with user {interaction.user.name}')
+	await interaction.response.send_message('❎ Your theme song has been deleted.', ephemeral=True)
 	delete_member_theme_song(interaction.user)
 
 # Run bot using secret token
