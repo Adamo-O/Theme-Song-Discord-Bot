@@ -46,6 +46,8 @@ default_log_user = 318887467707138051
 intents = discord.Intents.default()
 intents.members = True
 
+commands_synced = False
+
 # Setup bot attributes
 bot = commands.Bot(
 	command_prefix="$",
@@ -173,6 +175,9 @@ async def send_message_to_user(message, user_id=default_log_user):
 @bot.event
 async def on_ready():
 	print('Logged in as {}'.format(bot.user))
+	if not commands_synced:
+		await bot.tree.sync(guild=discord.Object(id=693189707596824648))
+		commands_synced = True
 	await send_message_to_user('Logged in as {}'.format(bot.user))
 
 # Runs when a voice channel updates
@@ -210,21 +215,36 @@ async def sync(interaction: discord.Interaction):
 	name="print",
 	aliases=["p"]
 )
-async def print_theme(ctx, user = None):
+# async def print_theme(ctx, user = None):
+# 	if user:
+# 		member = ctx.guild.get_member_named(user)
+# 		if member is None:
+# 			await ctx.send('Could not find user {}.'.format(user))
+# 		else:
+# 			print('print_theme printing theme song of other user {}'.format(member.name))
+# 			theme_song = get_member_theme_song(member)
+# 			theme_song_duration = get_member_song_duration(member)
+# 			await ctx.send('🎵 {}\'s theme song is {}\n⏱ It will play for {} seconds.'.format(member.name, theme_song, str(theme_song_duration)))
+# 	else:
+# 		print('print_theme triggered with user: {}'.format(ctx.author.name))
+# 		theme_song = get_member_theme_song(ctx.author)
+# 		theme_song_duration = get_member_song_duration(ctx.author)
+# 		await ctx.send('🎵 Your theme song is {}.\n⏱ It will play for {} seconds.'.format(theme_song, str(theme_song_duration)))
+async def print_theme(interaction: discord.Interaction, user = None):
 	if user:
-		member = ctx.guild.get_member_named(user)
+		member = interaction.guild.get_member_named(user)
 		if member is None:
-			await ctx.send('Could not find user {}.'.format(user))
+			await interaction.response.send_message('Could not find user {}.'.format(user))
 		else:
 			print('print_theme printing theme song of other user {}'.format(member.name))
 			theme_song = get_member_theme_song(member)
 			theme_song_duration = get_member_song_duration(member)
-			await ctx.send('🎵 {}\'s theme song is {}\n⏱ It will play for {} seconds.'.format(member.name, theme_song, str(theme_song_duration)))
+			await interaction.response.send_message('🎵 {}\'s theme song is {}\n⏱ It will play for {} seconds.'.format(member.name, theme_song, str(theme_song_duration)))
 	else:
 		print('print_theme triggered with user: {}'.format(ctx.author.name))
 		theme_song = get_member_theme_song(ctx.author)
 		theme_song_duration = get_member_song_duration(ctx.author)
-		await ctx.send('🎵 Your theme song is {}.\n⏱ It will play for {} seconds.'.format(theme_song, str(theme_song_duration)))
+		await interaction.response.send_message('🎵 Your theme song is {}.\n⏱ It will play for {} seconds.'.format(theme_song, str(theme_song_duration)))
 
 # Change author's theme song to inputted song
 @bot.tree.command(
