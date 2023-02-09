@@ -167,7 +167,7 @@ async def play(member: discord.Member, query: str):
 
 # Direct messaging for logging
 async def send_message_to_user(message: str, user_id: int=default_log_user):
-	user = bot.get_user(user_id, ephemeral=True)
+	user = bot.get_user(user_id)
 	print(user)
 	if user:
 		await user.send(message)
@@ -182,7 +182,7 @@ async def on_ready():
 	print(f'Logged in as {bot.user}')
 	await send_message_to_user(f'Logged in as {bot.user}')
 
-# Runs when a voice channel update, ephemeral=Trues
+# Runs when a voice channel updates
 @bot.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
 	# Don't do anything if a bot joins
