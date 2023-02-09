@@ -63,7 +63,7 @@ bot = commands.Bot(
 # Helper methods
 # -------------------------------------------
 # Search YoutubeDL for query/url and returns (info, url)
-def search(query):
+def search(query: str):
 	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try: requests.get(query)
 		except: info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
@@ -78,11 +78,10 @@ def get_member_theme_song(member: discord.Member):
 		return member_obj["theme_song"]
 
 	print(f'Could not find member {member.name}.')
-	return
 
 # Gets theme song duration of given member from database
 # Returns the number of seconds to play the theme song for
-def get_member_song_duration(member):
+def get_member_song_duration(member: discord.Member):
 
 	# Find user by id that has a duration
 	member_with_duration = users.find_one({"_id": str(member.id), "duration": { "$exists": True }})
@@ -96,12 +95,12 @@ def get_member_song_duration(member):
 	return default_theme_song_duration
 
 # Adds or changes member's theme song in database
-def set_member_theme_song(member, new_theme):
+def set_member_theme_song(member: discord.Member, new_theme: str):
 	users.update_one({"_id": str(member.id)}, { "$set": {"theme_song": str(new_theme)}}, upsert=True)
 	print(f'Setting {member.name}\'s theme song to {new_theme}. Their ID is {str(member.id)}.')
 
 # Adds or changes member's theme song duration in database
-def set_member_song_duration(member, new_duration):
+def set_member_song_duration(member: discord.Member, new_duration: float):
 	if users.find_one({"_id": str(member.id)}):
 		print(f'Setting {member.name}\'s song duration to {str(new_duration)}. Their ID is {str(member.id)}.')
 		users.update_one({"_id": str(member.id)}, { "$set": {"duration": str(new_duration)} }, upsert=True)
@@ -111,7 +110,7 @@ def set_member_song_duration(member, new_duration):
 		return False
 
 # Removes member from database
-def delete_member_theme_song(member):
+def delete_member_theme_song(member: discord.Member):
 	users.delete_one({"_id": str(member.id)})
 
 # Convert youtube short link to cleaned youtube link
@@ -119,7 +118,7 @@ def convert_yt_short(url: str):
 	return url.replace('shorts/', 'watch?v=').replace('?feature=share', '')
 
 # Plays audio of youtube video in member's voice channel via FFmpegOpusAudio
-async def play(member, query):
+async def play(member: discord.Member, query: str):
 	if query is None:
 		return
 		
@@ -167,7 +166,7 @@ async def play(member, query):
 	await voice.disconnect()
 
 # Direct messaging for logging
-async def send_message_to_user(message, user_id=default_log_user):
+async def send_message_to_user(message: str, user_id: int=default_log_user):
 	user = bot.get_user(user_id)
 	print(user)
 	if user:
@@ -180,23 +179,22 @@ async def send_message_to_user(message, user_id=default_log_user):
 # Runs when bot is ready
 @bot.event
 async def on_ready():
-	print('Logged in as {}'.format(bot.user))
-	# if not commands_synced:
-	# await bot.tree.sync()
-	# commands_synced = True
-	await send_message_to_user('Logged in as {}'.format(bot.user))
+	print(f'Logged in as {bot.user}')
+	await send_message_to_user(f'Logged in as {bot.user}')
 
 # Runs when a voice channel updates
 @bot.event
-async def on_voice_state_update(member, before, after):
+async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
 	# Don't do anything if a bot joins
 	if member.bot:
 		return
+
 	# Runs if member is here now that wasn't before (i.e. member joined)
 	if not before.channel and after.channel:
-		print('{} has joined voice channel {} in server: {}'.format(str(member.name), member.voice.channel.name, member.guild.name))
+		print(f'{str(member.name)} has joined voice channel {member.voice.channel.name} in server: {member.guild.name}')
 		url = get_member_theme_song(member)
-		await play(member, url)
+		if url is not None:
+			await play(member, url)
 
 # -------------------------------------------
 # Commands
@@ -208,7 +206,7 @@ async def on_voice_state_update(member, before, after):
 async def sync(interaction: discord.Interaction):
 	if interaction.user.id == default_log_user:
 		synced_commands = await bot.tree.sync()
-		await send_message_to_user('Synced commands: {}'.format(synced_commands))
+		await send_message_to_user(f'Synced commands: {synced_commands}')
 	else:
 		await interaction.response.send_message("You must be the server owner to use this command.")
 
@@ -217,25 +215,7 @@ async def sync(interaction: discord.Interaction):
 @bot.tree.command(
 	name="print",
 	description="Print the user's theme song and its duration when played.",
-	# help="Print the user's theme song and its duration when played.",
-	# brief="Print user's theme song.",
-	# aliases=["p"]
 )
-# async def print_theme(ctx, user = None):
-# 	if user:
-# 		member = ctx.guild.get_member_named(user)
-# 		if member is None:
-# 			await ctx.send('Could not find user {}.'.format(user))
-# 		else:
-# 			print('print_theme printing theme song of other user {}'.format(member.name))
-# 			theme_song = get_member_theme_song(member)
-# 			theme_song_duration = get_member_song_duration(member)
-# 			await ctx.send('🎵 {}\'s theme song is {}\n⏱ It will play for {} seconds.'.format(member.name, theme_song, str(theme_song_duration)))
-# 	else:
-# 		print('print_theme triggered with user: {}'.format(ctx.author.name))
-# 		theme_song = get_member_theme_song(ctx.author)
-# 		theme_song_duration = get_member_song_duration(ctx.author)
-# 		await ctx.send('🎵 Your theme song is {}.\n⏱ It will play for {} seconds.'.format(theme_song, str(theme_song_duration)))
 async def print_theme(interaction: discord.Interaction, user: str = ''):
 	if user:
 		member = interaction.guild.get_member_named(user)
@@ -252,28 +232,16 @@ async def print_theme(interaction: discord.Interaction, user: str = ''):
 		theme_song_duration = get_member_song_duration(interaction.user)
 		await interaction.response.send_message('🎵 Your theme song is {}.\n⏱ It will play for {} seconds.'.format(theme_song, str(theme_song_duration)))
 
+@print_theme.autocomplete('user')
+async def user_autocomplete(interaction: discord.Interaction, current: str) -> list[discord.app_commands.Choice[str]]:
+	usernames = bot.users
+	return [discord.app_commands.Choice(name=usernames, value=usernames) for username in usernames if current.lower() in username.name.lower()]
+
 # Change author's theme song to inputted song
 @bot.tree.command(
 	name="set",
 	description="Change user's theme song to url or search query",
-	# help="Change user's theme song to url or search query",
-	# brief="Change user's theme song",
-	# aliases=['set-theme', 'change-theme', 'change', 's', 'c']
 )
-# async def change_theme(ctx, song, theme_song_duration=default_theme_song_duration):
-# 	print('change_theme triggered. Changing {}\'s theme song to {} with duration {}'.format(ctx.author.name, song, str(theme_song_duration)))
-# 	set_member_theme_song(ctx.author, song)
-# 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
-# 		await ctx.send('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)))
-# 	else:
-# 		# If video duration is shorter than theme song duration, set it to video duration
-# 		video, source = search(song)
-# 		if float(theme_song_duration) > float(video['duration']):
-# 			theme_song_duration = float(video['duration'])
-# 		if set_member_song_duration(ctx.author, theme_song_duration):
-# 			await ctx.send('✅ Your theme song is now {}.\n⏱ It will play for {} seconds.'.format(song, str(theme_song_duration)))
-# 		else:
-# 			await ctx.send('❌ Duration not set. Cannot set a duration without a theme song.')
 async def change_theme(interaction: discord.Interaction, song: str, theme_song_duration: float=default_theme_song_duration):
 	print('change_theme triggered. Changing {}\'s theme song to {} with duration {}'.format(interaction.user.name, song, str(theme_song_duration)))
 	set_member_theme_song(interaction.user, song)
@@ -297,19 +265,7 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 @bot.tree.command(
 	name="set-duration",
 	description="Change user's theme song duration",
-	# help="Change user's theme song duration",
-	# brief="Change song duration",
-	# aliases=['set-length', 'change-duration', 'sd', 'st']
 )
-# async def change_song_duration(ctx, theme_song_duration):
-# 	print('change_song_duration triggered. Changing {}\'s song duration to {}'.format(ctx.author.name, str(theme_song_duration)))
-# 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
-# 		await ctx.send('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)))
-# 	else:
-# 		if set_member_song_duration(ctx.author, theme_song_duration):
-# 			await ctx.send('✅ Your theme song duration is now {} seconds.'.format(str(theme_song_duration)))
-# 		else:
-# 			await ctx.send('❌ Duration not set. Cannot set a duration without a theme song.')
 async def change_song_duration(interaction: discord.Interaction, theme_song_duration: float):
 	print('change_song_duration triggered. Changing {}\'s song duration to {}'.format(interaction.user.name, str(theme_song_duration)))
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
@@ -324,14 +280,7 @@ async def change_song_duration(interaction: discord.Interaction, theme_song_dura
 @bot.tree.command(
 	name="delete",
 	description="Delete user's theme song",
-	# help="Delete user's theme song",
-	# brief="Delete user's theme song",
-	# aliases=['del', 'delete-theme']
 )
-# async def delete_theme(ctx):
-# 	print('delete_theme triggered with user {}'.format(ctx.author.name))
-# 	await ctx.send('❎ Your theme song has been deleted.'.format(ctx.author.name))
-# 	delete_member_theme_song(ctx.author)
 async def delete_theme(interaction: discord.Interaction):
 	print('delete_theme triggered with user {}'.format(interaction.user.name))
 	await interaction.response.send_message('❎ Your theme song has been deleted.'.format(interaction.user.name))
