@@ -9,12 +9,15 @@ from discord.ext import commands
 from discord.utils import get as dget
 from youtube_dl import YoutubeDL
 
+from dotenv import load_dotenv
+load_dotenv()
 # -------------------------------------------
 # MongoDB and Heroku connections
 # -------------------------------------------
 
 uri = os.environ.get('MONGODB_URI')
-password = os.environ.get('MONGODB_PASSWORD')
+password = 'svmJHZhMU02FMcKe'
+# password = os.environ.get('MONGODB_PASSWORD')
 
 client = MongoClient(uri, username='admin', password=password)
 
@@ -69,7 +72,7 @@ def search(query):
 	return (info, info['formats'][0]['url'])
 
 # Gets theme song of given member from database
-def get_member_theme_song(member):
+def get_member_theme_song(member: discord.Member):
 	member_obj = users.find_one({"_id": str(member.id)})
 	if member_obj:
 		print(f'Member {member.name} found in database.')
@@ -175,9 +178,9 @@ async def send_message_to_user(message, user_id=default_log_user):
 @bot.event
 async def on_ready():
 	print('Logged in as {}'.format(bot.user))
-	if not commands_synced:
-		await bot.tree.sync(guild=discord.Object(id=693189707596824648))
-		commands_synced = True
+	# if not commands_synced:
+	# await bot.tree.sync()
+	# commands_synced = True
 	await send_message_to_user('Logged in as {}'.format(bot.user))
 
 # Runs when a voice channel updates
@@ -197,7 +200,7 @@ async def on_voice_state_update(member, before, after):
 # -------------------------------------------
 @bot.tree.command(
 	name="sync",
-	desciption="Sync bot commands (Server owner only)"
+	description="Sync bot commands (Server owner only)"
 )
 async def sync(interaction: discord.Interaction):
 	if interaction.user.id == default_log_user:
@@ -209,11 +212,11 @@ async def sync(interaction: discord.Interaction):
 # Prints author's theme song
 # If author inputted another user's name, print that user's theme song instead
 @bot.tree.command(
-	description="Print the user's theme song and its duration when played.",
-	help="Print the user's theme song and its duration when played.",
-	brief="Print user's theme song.",
 	name="print",
-	aliases=["p"]
+	description="Print the user's theme song and its duration when played.",
+	# help="Print the user's theme song and its duration when played.",
+	# brief="Print user's theme song.",
+	# aliases=["p"]
 )
 # async def print_theme(ctx, user = None):
 # 	if user:
@@ -230,7 +233,7 @@ async def sync(interaction: discord.Interaction):
 # 		theme_song = get_member_theme_song(ctx.author)
 # 		theme_song_duration = get_member_song_duration(ctx.author)
 # 		await ctx.send('🎵 Your theme song is {}.\n⏱ It will play for {} seconds.'.format(theme_song, str(theme_song_duration)))
-async def print_theme(interaction: discord.Interaction, user = None):
+async def print_theme(interaction: discord.Interaction, user: str = ''):
 	if user:
 		member = interaction.guild.get_member_named(user)
 		if member is None:
@@ -241,64 +244,91 @@ async def print_theme(interaction: discord.Interaction, user = None):
 			theme_song_duration = get_member_song_duration(member)
 			await interaction.response.send_message('🎵 {}\'s theme song is {}\n⏱ It will play for {} seconds.'.format(member.name, theme_song, str(theme_song_duration)))
 	else:
-		print('print_theme triggered with user: {}'.format(ctx.author.name))
-		theme_song = get_member_theme_song(ctx.author)
-		theme_song_duration = get_member_song_duration(ctx.author)
+		print('print_theme triggered with user: {}'.format(interaction.user.name))
+		theme_song = get_member_theme_song(interaction.user)
+		theme_song_duration = get_member_song_duration(interaction.user)
 		await interaction.response.send_message('🎵 Your theme song is {}.\n⏱ It will play for {} seconds.'.format(theme_song, str(theme_song_duration)))
 
 # Change author's theme song to inputted song
 @bot.tree.command(
-	description="Change user's theme song to url or search query",
-	help="Change user's theme song to url or search query",
-	brief="Change user's theme song",
 	name="set",
-	aliases=['set-theme', 'change-theme', 'change', 's', 'c']
+	description="Change user's theme song to url or search query",
+	# help="Change user's theme song to url or search query",
+	# brief="Change user's theme song",
+	# aliases=['set-theme', 'change-theme', 'change', 's', 'c']
 )
-async def change_theme(ctx, song, theme_song_duration=default_theme_song_duration):
-	print('change_theme triggered. Changing {}\'s theme song to {} with duration {}'.format(ctx.author.name, song, str(theme_song_duration)))
-	set_member_theme_song(ctx.author, song)
+# async def change_theme(ctx, song, theme_song_duration=default_theme_song_duration):
+# 	print('change_theme triggered. Changing {}\'s theme song to {} with duration {}'.format(ctx.author.name, song, str(theme_song_duration)))
+# 	set_member_theme_song(ctx.author, song)
+# 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
+# 		await ctx.send('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)))
+# 	else:
+# 		# If video duration is shorter than theme song duration, set it to video duration
+# 		video, source = search(song)
+# 		if float(theme_song_duration) > float(video['duration']):
+# 			theme_song_duration = float(video['duration'])
+# 		if set_member_song_duration(ctx.author, theme_song_duration):
+# 			await ctx.send('✅ Your theme song is now {}.\n⏱ It will play for {} seconds.'.format(song, str(theme_song_duration)))
+# 		else:
+# 			await ctx.send('❌ Duration not set. Cannot set a duration without a theme song.')
+async def change_theme(interaction: discord.Interaction, song: str, theme_song_duration: float=default_theme_song_duration):
+	print('change_theme triggered. Changing {}\'s theme song to {} with duration {}'.format(interaction.user.name, song, str(theme_song_duration)))
+	set_member_theme_song(interaction.user, song)
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
-		await ctx.send('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)))
+		await interaction.response.send_message('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)))
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
 		video, source = search(song)
 		if float(theme_song_duration) > float(video['duration']):
 			theme_song_duration = float(video['duration'])
-		if set_member_song_duration(ctx.author, theme_song_duration):
-			await ctx.send('✅ Your theme song is now {}.\n⏱ It will play for {} seconds.'.format(song, str(theme_song_duration)))
+		if set_member_song_duration(interaction.user, theme_song_duration):
+			await interaction.response.send_message('✅ Your theme song is now {}.\n⏱ It will play for {} seconds.'.format(song, str(theme_song_duration)))
 		else:
-			await ctx.send('❌ Duration not set. Cannot set a duration without a theme song.')
+			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.')
 
 @bot.tree.command(
-	description="Change user's theme song duration",
-	help="Change user's theme song duration",
-	brief="Change song duration",
 	name="set-duration",
-	aliases=['set-length', 'change-duration', 'sd', 'st']
+	description="Change user's theme song duration",
+	# help="Change user's theme song duration",
+	# brief="Change song duration",
+	# aliases=['set-length', 'change-duration', 'sd', 'st']
 )
-async def change_song_duration(ctx, theme_song_duration):
-	print('change_song_duration triggered. Changing {}\'s song duration to {}'.format(ctx.author.name, str(theme_song_duration)))
+# async def change_song_duration(ctx, theme_song_duration):
+# 	print('change_song_duration triggered. Changing {}\'s song duration to {}'.format(ctx.author.name, str(theme_song_duration)))
+# 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
+# 		await ctx.send('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)))
+# 	else:
+# 		if set_member_song_duration(ctx.author, theme_song_duration):
+# 			await ctx.send('✅ Your theme song duration is now {} seconds.'.format(str(theme_song_duration)))
+# 		else:
+# 			await ctx.send('❌ Duration not set. Cannot set a duration without a theme song.')
+async def change_song_duration(interaction: discord.Interaction, theme_song_duration: float):
+	print('change_song_duration triggered. Changing {}\'s song duration to {}'.format(interaction.user.name, str(theme_song_duration)))
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
-		await ctx.send('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)))
+		await interaction.response.send_message('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)))
 	else:
-		if set_member_song_duration(ctx.author, theme_song_duration):
-			await ctx.send('✅ Your theme song duration is now {} seconds.'.format(str(theme_song_duration)))
+		if set_member_song_duration(interaction.user, theme_song_duration):
+			await interaction.response.send_message('✅ Your theme song duration is now {} seconds.'.format(str(theme_song_duration)))
 		else:
-			await ctx.send('❌ Duration not set. Cannot set a duration without a theme song.')
+			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.')
 
 # Delete author's theme song
 @bot.tree.command(
-	description="Delete user's theme song",
-	help="Delete user's theme song",
-	brief="Delete user's theme song",
 	name="delete",
-	aliases=['del', 'delete-theme']
+	description="Delete user's theme song",
+	# help="Delete user's theme song",
+	# brief="Delete user's theme song",
+	# aliases=['del', 'delete-theme']
 )
-async def delete_theme(ctx):
-	print('delete_theme triggered with user {}'.format(ctx.author.name))
-	await ctx.send('❎ Your theme song has been deleted.'.format(ctx.author.name))
-	delete_member_theme_song(ctx.author)
+# async def delete_theme(ctx):
+# 	print('delete_theme triggered with user {}'.format(ctx.author.name))
+# 	await ctx.send('❎ Your theme song has been deleted.'.format(ctx.author.name))
+# 	delete_member_theme_song(ctx.author)
+async def delete_theme(interaction: discord.Interaction):
+	print('delete_theme triggered with user {}'.format(interaction.user.name))
+	await interaction.response.send_message('❎ Your theme song has been deleted.'.format(interaction.user.name))
+	delete_member_theme_song(interaction.user)
 
 # Run bot using secret token
 if __name__ == '__main__':
-	bot.run(os.environ['DISCORD_TOKEN'])
+	bot.run(os.environ.get('DISCORD_TOKEN'))
