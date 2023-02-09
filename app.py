@@ -55,7 +55,6 @@ bot = commands.Bot(
 	command_prefix="$",
 	description="Plays a unique theme song for each user in the server.",
 	help_command=commands.DefaultHelpCommand(no_category="Theme song commands"),
-	activity = discord.Activity(type=discord.ActivityType.listening, name="$help and theme songs"),
 	intents=intents
 )
 
@@ -180,6 +179,7 @@ async def send_message_to_user(message: str, user_id: int=default_log_user):
 @bot.event
 async def on_ready():
 	print(f'Logged in as {bot.user}')
+	await bot.change_presence(activity = discord.Activity(type=discord.ActivityType.listening, name=f'{len(bot.guilds)} servers'))
 	await send_message_to_user(f'Logged in as {bot.user}')
 
 # Runs when a voice channel updates
