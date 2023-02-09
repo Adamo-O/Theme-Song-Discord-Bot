@@ -190,9 +190,21 @@ async def on_voice_state_update(member, before, after):
 # -------------------------------------------
 # Commands
 # -------------------------------------------
+@bot.tree.command(
+	name="sync",
+	desciption="Sync bot commands (Server owner only)"
+)
+async def sync(interaction: discord.Interaction):
+	if interaction.user.id == default_log_user:
+		synced_commands = await bot.tree.sync()
+		await send_message_to_user('Synced commands: {}'.format(synced_commands))
+	else:
+		await interaction.response.send_message("You must be the server owner to use this command.")
+
 # Prints author's theme song
 # If author inputted another user's name, print that user's theme song instead
-@bot.command(
+@bot.tree.command(
+	description="Print the user's theme song and its duration when played.",
 	help="Print the user's theme song and its duration when played.",
 	brief="Print user's theme song.",
 	name="print",
@@ -215,7 +227,8 @@ async def print_theme(ctx, user = None):
 		await ctx.send('🎵 Your theme song is {}.\n⏱ It will play for {} seconds.'.format(theme_song, str(theme_song_duration)))
 
 # Change author's theme song to inputted song
-@bot.command(
+@bot.tree.command(
+	description="Change user's theme song to url or search query",
 	help="Change user's theme song to url or search query",
 	brief="Change user's theme song",
 	name="set",
@@ -236,7 +249,8 @@ async def change_theme(ctx, song, theme_song_duration=default_theme_song_duratio
 		else:
 			await ctx.send('❌ Duration not set. Cannot set a duration without a theme song.')
 
-@bot.command(
+@bot.tree.command(
+	description="Change user's theme song duration",
 	help="Change user's theme song duration",
 	brief="Change song duration",
 	name="set-duration",
@@ -253,7 +267,8 @@ async def change_song_duration(ctx, theme_song_duration):
 			await ctx.send('❌ Duration not set. Cannot set a duration without a theme song.')
 
 # Delete author's theme song
-@bot.command(
+@bot.tree.command(
+	description="Delete user's theme song",
 	help="Delete user's theme song",
 	brief="Delete user's theme song",
 	name="delete",
