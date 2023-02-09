@@ -244,16 +244,15 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 )
 async def change_theme(interaction: discord.Interaction, song: str, theme_song_duration: float=default_theme_song_duration):
 	print(f'change_theme triggered. Changing {interaction.user.name}\'s theme song to {song} with duration {str(theme_song_duration)}')
+	# If song link is a youtube short, convert to correct youtube link
+	if 'shorts' in song and 'http' in song:
+		song = convert_yt_short(song)
+
 	set_member_theme_song(interaction.user, song)
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
 		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
-
-		# If song link is a youtube short, convert to correct youtube link
-		if 'shorts' in song and 'http' in song:
-			song = convert_yt_short(song)
-
 		video, source = search(song)
 		if float(theme_song_duration) > float(video['duration']):
 			theme_song_duration = float(video['duration'])
