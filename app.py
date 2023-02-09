@@ -114,6 +114,10 @@ def set_member_song_duration(member, new_duration):
 def delete_member_theme_song(member):
 	users.delete_one({"_id": str(member.id)})
 
+# Convert youtube short link to cleaned youtube link
+def convert_yt_short(url: str):
+	return url.replace('shorts/', 'watch?v=').replace('?feature=share', '')
+
 # Plays audio of youtube video in member's voice channel via FFmpegOpusAudio
 async def play(member, query):
 	if query is None:
@@ -277,6 +281,11 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 		await interaction.response.send_message('💢 Your song duration must be between {} and {}.'.format(str(min_theme_song_duration), str(max_theme_song_duration)))
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
+
+		# If song link is a youtube short, convert to correct youtube link
+		if 'shorts' in song and 'http' in song:
+			song = convert_yt_short(song)
+
 		video, source = search(song)
 		if float(theme_song_duration) > float(video['duration']):
 			theme_song_duration = float(video['duration'])
