@@ -278,17 +278,18 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
-		video, source = search(song)
 		url_start_time = re.search("\?t=\d+", song)
 		if (url_start_time is None):
 			start_time = 0.0
 		else:
-			start_time = url_start_time.group()[3:]
+			start_time = float(url_start_time.group()[3:])
 
+		video, source = search(song, start_time, start_time + theme_song_duration)
+		
 		if float(theme_song_duration) > float(video['duration']):
 			theme_song_duration = float(video['duration'])
-		elif float(video['duration']) - float(start_time) > theme_song_duration:
-			theme_song_duration = float(video['duration']) - float(start_time)
+		elif float(video['duration']) - start_time > theme_song_duration:
+			theme_song_duration = float(video['duration']) - start_time
 		
 		if set_member_song_duration(interaction.user, theme_song_duration):
 			await interaction.response.send_message(f'✅ Your theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
