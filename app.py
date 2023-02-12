@@ -144,12 +144,12 @@ async def play(member: discord.Member, query: str):
 			'options': '-vn'
 		}
 	else:
-		start_time = url_start_time.group()[3:]
-		end_time = str(float(start_time) + duration)
-		print(f'start time: {start_time}\nduration: {str(duration)}\nend time: {end_time}')
+		start_time = float(url_start_time.group()[3:])
+		end_time = start_time + duration
+		print(f'start time: {str(datetime.timedelta(seconds=start_time))}\nduration: {str(duration)}\nend time: {str(end_time)}')
 		FFMPEG_OPTIONS = {
-			'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=float(start_time)))}',
-			'options': f'-vn -t {str(duration)} -c copy -copyts'
+			'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=start_time))}',
+			'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))} -c copy -copyts'
 		}
 
 	# Play audio from youtube video
