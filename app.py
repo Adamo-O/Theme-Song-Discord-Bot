@@ -27,11 +27,26 @@ users = client.theme_songsDB.userData
 # Constants
 # -------------------------------------------
 # Options for YoutubeDL
-YDL_OPTIONS = {
-	'format': 'bestaudio', 
-	'noplaylist': 'True', 
-	'cookiefile': 'cookies.txt'
-} 
+
+def getYDLOptions(start_time: float, end_time: float):
+	print('start time:', str(datetime.timedelta(seconds=start_time)), 'end time:', str(datetime.timedelta(seconds=end_time)))
+	return {
+			'format': 'bestaudio', 
+		'noplaylist': 'True', 
+		'cookiefile': 'cookies.txt',
+		# 'prefer_ffmpeg': 'True',
+		'postprocessor_args': f'-ss {str(datetime.timedelta(seconds=start_time))} -to {str(datetime.timedelta(seconds=end_time))}'
+	}
+
+# YDL_OPTIONS = {
+# 	'format': 'bestaudio', 
+# 	'noplaylist': 'True', 
+# 	'cookiefile': 'cookies.txt',
+# 	# 'prefer_ffmpeg': 'True',
+# 	'postprocessor_args': ''
+# 	# 'external_downloader': 'ffmpeg',
+# 	# 'external_downloader_args': "-ss 00:01:00.00 -to 00:02:00.00"
+# } 
 
 # Default theme song duration variables
 min_theme_song_duration = 1.0
@@ -63,8 +78,9 @@ bot = commands.Bot(
 # Helper methods
 # -------------------------------------------
 # Search YoutubeDL for query/url and returns (info, url)
-def search(query: str):
-	with YoutubeDL(YDL_OPTIONS) as ydl:
+def search(query: str, start_time: float, end_time: float):
+	with YoutubeDL(getYDLOptions(start_time, end_time)) as ydl:
+	# with YoutubeDL(YDL_OPTIONS) as ydl:
 		try: requests.get(query)
 		except: info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
 		else: info = ydl.extract_info(query, download=False)
@@ -121,24 +137,16 @@ def convert_yt_short(url: str):
 async def play(member: discord.Member, query: str):
 	if query is None:
 		return
-		
-	# Seach for audio on youtube
-	video, source = search(query)
-	voice = dget(bot.voice_clients, guild=member.guild)
 
+	# Get user duration	
 	duration = get_member_song_duration(member)
-
-	# Join the channel that the member is connected to
-	channel = member.voice.channel
-	if voice and voice.is_connected():
-		await voice.move_to(channel)
-	else:
-		voice = await channel.connect()
 
 	# Options for FFmpeg
 	url_start_time = re.search("\?t=\d+", query)
 
 	if (url_start_time is None):
+		start_time = 0.0
+		end_time = duration
 		FFMPEG_OPTIONS = {
 			'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
 			'options': '-vn'
@@ -148,9 +156,25 @@ async def play(member: discord.Member, query: str):
 		end_time = str(float(start_time) + float(duration))
 		print(f'start time: {start_time}\nduration: {duration}\nend time: {end_time}')
 		FFMPEG_OPTIONS = {
-			'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=float(start_time)))}',
-			'options': f'-vn -to {str(datetime.timedelta(seconds=float(end_time)))} -c copy -copyts'
+			'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+			'options': '-vn'
 		}
+		# FFMPEG_OPTIONS = {
+		# 	'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=float(start_time)))}',
+		# 	'options': f'-vn -to {str(datetime.timedelta(seconds=float(end_time)))} -c copy -copyts'
+		# }
+
+	# Seach for audio on youtube
+	video, source = search(query, float(start_time), float(end_time))
+	voice = dget(bot.voice_clients, guild=member.guild)
+
+
+	# Join the channel that the member is connected to
+	channel = member.voice.channel
+	if voice and voice.is_connected():
+		await voice.move_to(channel)
+	else:
+		voice = await channel.connect()
 
 	# Play audio from youtube video
 	videoSource = await discord.FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
