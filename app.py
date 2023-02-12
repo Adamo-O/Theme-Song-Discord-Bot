@@ -148,8 +148,8 @@ async def play(member: discord.Member, query: str):
 		end_time = str(float(start_time) + float(duration))
 		print(f'start time: {start_time}\nduration: {duration}\nend time: {end_time}')
 		FFMPEG_OPTIONS = {
-			'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=float(start_time)))} -to {str(datetime.timedelta(seconds=float(end_time)))}',
-			'options': '-vn'
+			'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=float(start_time)))}',
+			'options': f'-vn -to {str(datetime.timedelta(seconds=float(end_time)))} -c copy -copyts'
 		}
 
 	# Play audio from youtube video
@@ -255,8 +255,17 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
 		video, source = search(song)
+		url_start_time = re.search("\?t=\d+", song)
+		if (url_start_time is None):
+			start_time = 0.0
+		else:
+			start_time = url_start_time.group()[3:]
+
 		if float(theme_song_duration) > float(video['duration']):
 			theme_song_duration = float(video['duration'])
+		elif float(video['duration']) - float(start_time) > theme_song_duration:
+			theme_song_duration = float(video['duration']) - float(start_time)
+		
 		if set_member_song_duration(interaction.user, theme_song_duration):
 			await interaction.response.send_message(f'✅ Your theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
 		else:
