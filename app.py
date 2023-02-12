@@ -27,26 +27,11 @@ users = client.theme_songsDB.userData
 # Constants
 # -------------------------------------------
 # Options for YoutubeDL
-
-def getYDLOptions(start_time: float, end_time: float):
-	print('start time:', str(datetime.timedelta(seconds=start_time)), 'end time:', str(datetime.timedelta(seconds=end_time)))
-	return {
-			'format': 'bestaudio', 
-		'noplaylist': 'True', 
-		'cookiefile': 'cookies.txt',
-		# 'prefer_ffmpeg': 'True',
-		'postprocessor_args': f'-ss {str(datetime.timedelta(seconds=start_time))} -to {str(datetime.timedelta(seconds=end_time))}'
-	}
-
-# YDL_OPTIONS = {
-# 	'format': 'bestaudio', 
-# 	'noplaylist': 'True', 
-# 	'cookiefile': 'cookies.txt',
-# 	# 'prefer_ffmpeg': 'True',
-# 	'postprocessor_args': ''
-# 	# 'external_downloader': 'ffmpeg',
-# 	# 'external_downloader_args': "-ss 00:01:00.00 -to 00:02:00.00"
-# } 
+YDL_OPTIONS = {
+	'format': 'bestaudio', 
+	'noplaylist': 'True', 
+	'cookiefile': 'cookies.txt'
+} 
 
 # Default theme song duration variables
 min_theme_song_duration = 1.0
@@ -78,9 +63,8 @@ bot = commands.Bot(
 # Helper methods
 # -------------------------------------------
 # Search YoutubeDL for query/url and returns (info, url)
-def search(query: str, start_time: float, end_time: float):
-	with YoutubeDL(getYDLOptions(start_time, end_time)) as ydl:
-	# with YoutubeDL(YDL_OPTIONS) as ydl:
+def search(query: str):
+	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try: requests.get(query)
 		except: info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
 		else: info = ydl.extract_info(query, download=False)
@@ -137,37 +121,12 @@ def convert_yt_short(url: str):
 async def play(member: discord.Member, query: str):
 	if query is None:
 		return
-
-	# Get user duration	
-	duration = get_member_song_duration(member)
-
-	# Options for FFmpeg
-	url_start_time = re.search("\?t=\d+", query)
-
-	if (url_start_time is None):
-		start_time = 0.0
-		end_time = duration
-		FFMPEG_OPTIONS = {
-			'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-			'options': '-vn'
-		}
-	else:
-		start_time = url_start_time.group()[3:]
-		end_time = str(float(start_time) + float(duration))
-		print(f'start time: {start_time}\nduration: {duration}\nend time: {end_time}')
-		FFMPEG_OPTIONS = {
-			'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-			'options': '-vn'
-		}
-		# FFMPEG_OPTIONS = {
-		# 	'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=float(start_time)))}',
-		# 	'options': f'-vn -to {str(datetime.timedelta(seconds=float(end_time)))} -c copy -copyts'
-		# }
-
+		
 	# Seach for audio on youtube
-	video, source = search(query, float(start_time), float(end_time))
+	video, source = search(query)
 	voice = dget(bot.voice_clients, guild=member.guild)
 
+	duration = get_member_song_duration(member)
 
 	# Join the channel that the member is connected to
 	channel = member.voice.channel
@@ -175,6 +134,23 @@ async def play(member: discord.Member, query: str):
 		await voice.move_to(channel)
 	else:
 		voice = await channel.connect()
+
+	# Options for FFmpeg
+	url_start_time = re.search("\?t=\d+", query)
+
+	if (url_start_time is None):
+		FFMPEG_OPTIONS = {
+			'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+			'options': '-vn'
+		}
+	else:
+		start_time = url_start_time.group()[3:]
+		end_time = str(float(start_time) + duration)
+		print(f'start time: {start_time}\nduration: {str(duration)}\nend time: {end_time}')
+		FFMPEG_OPTIONS = {
+			'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=float(start_time)))}',
+			'options': f'-vn -t {str(duration)} -c copy -copyts'
+		}
 
 	# Play audio from youtube video
 	videoSource = await discord.FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
@@ -278,18 +254,17 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
+		video, source = search(song)
 		url_start_time = re.search("\?t=\d+", song)
 		if (url_start_time is None):
 			start_time = 0.0
 		else:
-			start_time = float(url_start_time.group()[3:])
+			start_time = url_start_time.group()[3:]
 
-		video, source = search(song, start_time, start_time + theme_song_duration)
-		
 		if float(theme_song_duration) > float(video['duration']):
 			theme_song_duration = float(video['duration'])
-		elif float(video['duration']) - start_time > theme_song_duration:
-			theme_song_duration = float(video['duration']) - start_time
+		elif float(video['duration']) - float(start_time) > theme_song_duration:
+			theme_song_duration = float(video['duration']) - float(start_time)
 		
 		if set_member_song_duration(interaction.user, theme_song_duration):
 			await interaction.response.send_message(f'✅ Your theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
