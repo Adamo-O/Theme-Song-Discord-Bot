@@ -3,6 +3,7 @@ import discord
 import os
 import requests
 import re
+import datetime
 
 from pymongo import MongoClient
 from discord.ext import commands
@@ -147,7 +148,7 @@ async def play(member: discord.Member, query: str):
 		end_time = str(float(start_time) + float(duration))
 		print(f'start time: {start_time}\nduration: {duration}\nend time: {end_time}')
 		FFMPEG_OPTIONS = {
-			'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(start_time)}',
+			'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=start_time))} -to {str(datetime.timedelta(seconds=end_time))}',
 			'options': '-vn'
 		}
 
