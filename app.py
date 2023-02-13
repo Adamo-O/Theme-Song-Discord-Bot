@@ -379,8 +379,11 @@ async def outro(interaction: discord.Interaction):
 	print(f'Outro for {interaction.user.name}')
 	url = get_member_outro_song(interaction.user)
 	if url is not None:
+		await interaction.response.send_message(f'👋 See ya!\n🎵 Playing {str(url)}...', ephemeral=True)
 		await play(interaction.user, url)
 		await interaction.user.move_to(None)
+	else:
+		await interaction.response.send_message('❌ Outro song not set. Please use `/set-outro` before running this.', ephemeral=True)
 
 # Delete author's theme song
 @bot.tree.command(
