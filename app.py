@@ -155,15 +155,13 @@ def convert_yt_short(url: str):
 	return url.replace('shorts/', 'watch?v=').replace('?feature=share', '')
 
 # Plays audio of youtube video in member's voice channel via FFmpegOpusAudio
-async def play(member: discord.Member, query: str):
+async def play(member: discord.Member, query: str, duration: float):
 	if query is None:
 		return
 		
 	# Seach for audio on youtube
 	video, source = search(query)
 	voice = dget(bot.voice_clients, guild=member.guild)
-
-	duration = get_member_song_duration(member)
 
 	# Join the channel that the member is connected to
 	channel = member.voice.channel
@@ -233,7 +231,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 		print(f'{str(member.name)} has joined voice channel {member.voice.channel.name} in server: {member.guild.name}')
 		url = get_member_theme_song(member)
 		if url is not None:
-			await play(member, url)
+			await play(member, url, get_member_song_duration(member))
 
 # -------------------------------------------
 # Commands
@@ -315,14 +313,14 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 	description="Change user's outro song to url or search query."
 )
 async def change_outro(interaction: discord.Interaction, song: str, outro_duration: float=default_theme_song_duration):
-	print(f'change outro theme triggered. Chaning {interaction.user.name}\'s theme song to {song} with duration {str(outro_duration)}')
+	print(f'change outro theme triggered. Changing {interaction.user.name}\'s outro to {song} with duration {str(outro_duration)}')
 	# If song link is a youtube short, convert to correct youtube link
 	if 'shorts' in song and 'http' in song:
 		song = convert_yt_short(song)
 
 	set_outro_song(interaction.user, song)
 	if float(outro_duration) < min_theme_song_duration or float(outro_duration) > max_theme_song_duration:
-		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+		await interaction.response.send_message(f'💢 Your outro duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
 		video, source = search(song)
@@ -339,9 +337,9 @@ async def change_outro(interaction: discord.Interaction, song: str, outro_durati
 			outro_duration = float(video_duration) - start_time
 		
 		if set_outro_duration(interaction.user, outro_duration):
-			await interaction.response.send_message(f'✅ Your theme song is now {song}.\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
+			await interaction.response.send_message(f'✅ Your outro is now {song}.\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 		else:
-			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
+			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without an outro.', ephemeral=True)
 
 @bot.tree.command(
 	name="set-duration",
@@ -364,12 +362,12 @@ async def change_song_duration(interaction: discord.Interaction, theme_song_dura
 async def change_outro_duration(interaction: discord.Interaction, outro_duration: float):
 	print(f'change_outro_duration triggered. Changing {interaction.user.name}\'s song duration to {str(outro_duration)}')
 	if float(outro_duration) < min_theme_song_duration or float(outro_duration) > max_theme_song_duration:
-		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+		await interaction.response.send_message(f'💢 Your outro duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
 		if set_outro_duration(interaction.user, outro_duration):
-			await interaction.response.send_message(f'✅ Your theme song duration is now {str(outro_duration)} seconds.', ephemeral=True)
+			await interaction.response.send_message(f'✅ Your outro duration is now {str(outro_duration)} seconds.', ephemeral=True)
 		else:
-			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
+			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without an outro.', ephemeral=True)
 
 @bot.tree.command(
 	name="outro",
@@ -379,8 +377,8 @@ async def outro(interaction: discord.Interaction):
 	print(f'Outro for {interaction.user.name}')
 	url = get_member_outro_song(interaction.user)
 	if url is not None:
-		await interaction.response.send_message(f'👋 See ya!\n🎵 Playing {str(url)}...', ephemeral=True)
-		await play(interaction.user, url)
+		await interaction.response.send_message(f'👋 See ya!\n🎵 Playing {str(url)}', ephemeral=True)
+		await play(interaction.user, url, get_member_outro_duration(interaction.user))
 		await interaction.user.move_to(None)
 	else:
 		await interaction.response.send_message('❌ Outro song not set. Please use `/set-outro` before running this.', ephemeral=True)
