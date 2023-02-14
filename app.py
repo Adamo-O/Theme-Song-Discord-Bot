@@ -269,9 +269,11 @@ async def print_theme(interaction: discord.Interaction, user: str):
 			theme_song_duration = get_member_song_duration(member)
 			outro = get_member_outro_song(member)
 			outro_duration = get_member_outro_duration(member)
-			if theme_song:
+			if theme_song and outro:
+				await interaction.response.send_message(f'🎵✨ {member.name}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.\n\n🎵👋 {member.name}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
+			elif theme_song:
 				await interaction.response.send_message(f'🎵✨ {member.name}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
-			if outro:
+			elif outro:
 				await interaction.response.send_message(f'🎵👋 {member.name}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 	else:
 		print(f'print_theme triggered with user: {interaction.user.name}')
@@ -279,9 +281,11 @@ async def print_theme(interaction: discord.Interaction, user: str):
 		theme_song_duration = get_member_song_duration(interaction.user)
 		outro = get_member_outro_song(member)
 		outro_duration = get_member_outro_duration(member)
-		if theme_song:
+		if theme_song and outro:
+			await interaction.response.send_message(f'🎵✨ {interaction.user}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.\n\n🎵👋 {member.name}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
+		elif theme_song:
 			await interaction.response.send_message(f'🎵✨ {interaction.user}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
-		if outro:
+		elif outro:
 			await interaction.response.send_message(f'🎵👋 {interaction.user}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 
 # Change author's theme song to inputted song
