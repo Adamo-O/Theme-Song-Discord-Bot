@@ -253,7 +253,7 @@ async def sync(interaction: discord.Interaction):
 	name="print",
 	description="Print the user's theme song and its duration, as well as the outro and its duration.",
 )
-async def print_theme(interaction: discord.Interaction, user: str = ''):
+async def print_theme(interaction: discord.Interaction, user: str):
 	if user:
 		member = interaction.guild.get_member_named(user)
 		if member is None:
@@ -279,10 +279,10 @@ async def print_theme(interaction: discord.Interaction, user: str = ''):
 		if outro:
 			await interaction.response.send_message(f'🎵👋 {interaction.user}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 
-@print_theme.autocomplete('user')
+@print_theme.autocomplete("user")
 async def user_autocomplete(interaction: discord.Interaction, current: str):
 	usernames = interaction.guild.members
-	return [discord.app_commands.Choice(name=usernames, value=usernames) for username in usernames if current.lower() in username.name.lower()]
+	return [discord.app_commands.Choice(name=username, value=username) for username in usernames if current.lower() in username.name.lower()]
 
 # Change author's theme song to inputted song
 @bot.tree.command(
