@@ -247,12 +247,17 @@ async def sync(interaction: discord.Interaction):
 	else:
 		await interaction.response.send_message("You must be the server owner to use this command.", ephemeral=True)
 
+async def user_autocomplete(interaction: discord.Interaction, current: str):
+	usernames = interaction.guild.members
+	return [discord.app_commands.Choice(name=username.name, value=username.name) for username in usernames if current.lower() in username.name.lower()]
+
 # Prints author's theme song
 # If author inputted another user's name, print that user's theme song instead
 @bot.tree.command(
 	name="print",
 	description="Print the user's theme song and its duration, as well as the outro and its duration.",
 )
+@discord.app_commands.autocomplete(user=user_autocomplete)
 async def print_theme(interaction: discord.Interaction, user: str):
 	if user:
 		member = interaction.guild.get_member_named(user)
@@ -278,11 +283,6 @@ async def print_theme(interaction: discord.Interaction, user: str):
 			await interaction.response.send_message(f'🎵✨ {interaction.user}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
 		if outro:
 			await interaction.response.send_message(f'🎵👋 {interaction.user}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
-
-@print_theme.autocomplete("user")
-async def user_autocomplete(interaction: discord.Interaction, current: str):
-	usernames = interaction.guild.members
-	return [discord.app_commands.Choice(name=username, value=username) for username in usernames if current.lower() in username.name.lower()]
 
 # Change author's theme song to inputted song
 @bot.tree.command(
