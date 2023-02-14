@@ -251,7 +251,7 @@ async def sync(interaction: discord.Interaction):
 # If author inputted another user's name, print that user's theme song instead
 @bot.tree.command(
 	name="print",
-	description="Print the user's theme song and its duration when played.",
+	description="Print the user's theme song and its duration, as well as the outro and its duration.",
 )
 async def print_theme(interaction: discord.Interaction, user: str = ''):
 	if user:
@@ -262,16 +262,26 @@ async def print_theme(interaction: discord.Interaction, user: str = ''):
 			print(f'print_theme printing theme song of other user {member.name}')
 			theme_song = get_member_theme_song(member)
 			theme_song_duration = get_member_song_duration(member)
-			await interaction.response.send_message(f'🎵 {member.name}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+			outro = get_member_outro_song(member)
+			outro_duration = get_member_outro_duration(member)
+			if theme_song:
+				await interaction.response.send_message(f'🎵✨ {member.name}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+			if outro:
+				await interaction.response.send_message(f'🎵👋 {member.name}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 	else:
 		print(f'print_theme triggered with user: {interaction.user.name}')
 		theme_song = get_member_theme_song(interaction.user)
 		theme_song_duration = get_member_song_duration(interaction.user)
-		await interaction.response.send_message(f'🎵 Your theme song is {theme_song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+		outro = get_member_outro_song(member)
+		outro_duration = get_member_outro_duration(member)
+		if theme_song:
+			await interaction.response.send_message(f'🎵✨ {interaction.user}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+		if outro:
+			await interaction.response.send_message(f'🎵👋 {interaction.user}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 
 @print_theme.autocomplete('user')
 async def user_autocomplete(interaction: discord.Interaction, current: str):
-	usernames = bot.users
+	usernames = interaction.guild.members
 	return [discord.app_commands.Choice(name=usernames, value=usernames) for username in usernames if current.lower() in username.name.lower()]
 
 # Change author's theme song to inputted song
