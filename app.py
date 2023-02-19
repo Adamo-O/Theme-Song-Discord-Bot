@@ -6,6 +6,7 @@ import re
 import datetime
 
 from pymongo import MongoClient
+from discord import FFmpegOpusAudio
 from discord.ext import commands
 from discord.utils import get as dget
 from yt_dlp import YoutubeDL
@@ -48,6 +49,7 @@ default_log_user = 318887467707138051
 # Set intents (read members in guild)
 intents = discord.Intents.default()
 intents.members = True
+intents.voice_states = True
 
 commands_synced = False
 
@@ -189,7 +191,7 @@ async def play(member: discord.Member, query: str, duration: float):
 		}
 
 	# Play audio from youtube video
-	videoSource = await discord.FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
+	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
 	voice.is_playing()
 	voice.play(videoSource)
 
