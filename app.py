@@ -9,6 +9,7 @@ from pymongo import MongoClient
 from discord import FFmpegOpusAudio
 from discord.ext import commands
 from discord.utils import get as dget
+# from youtube_dl import YoutubeDL
 from yt_dlp import YoutubeDL
 
 # from dotenv import load_dotenv
@@ -70,6 +71,7 @@ def search(query: str):
 		try: requests.get(query)
 		except: info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
 		else: info = ydl.extract_info(query, download=False)
+		print(info)
 	return (info, info['formats'][0]['url'])
 
 # Gets theme song of given member from database
@@ -189,6 +191,7 @@ async def play(member: discord.Member, query: str, duration: float):
 			'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))}'
 			# 'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))} -c copy -copyts'
 		}
+	print('Source: ', source)
 
 	# Play audio from youtube video
 	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
