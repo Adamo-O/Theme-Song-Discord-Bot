@@ -33,7 +33,8 @@ YDL_OPTIONS = {
 	'format': 'bestaudio', 
 	'noplaylist': 'True', 
 	'cookiefile': 'cookies.txt',
-	'audio-quality': 'opus'
+	'audio-quality': 'opus',
+	'acodec': 'opus'
 } 
 
 # Default theme song duration variables
