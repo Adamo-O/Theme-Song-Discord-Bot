@@ -32,7 +32,8 @@ users = client.theme_songsDB.userData
 YDL_OPTIONS = {
 	'format': 'bestaudio', 
 	'noplaylist': 'True', 
-	'cookiefile': 'cookies.txt'
+	'cookiefile': 'cookies.txt',
+	'audio-quality': 'opus'
 } 
 
 # Default theme song duration variables
