@@ -73,8 +73,15 @@ def search(query: str):
 		try: requests.get(query)
 		except: info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
 		else: info = ydl.extract_info(query, download=False)
-		print(info)
-	return (info, info['formats'][0]['url'])
+		for format in info['formats']:
+			if format.acodec == 'opus':
+				url = format.url
+				break
+		else:
+			url = None
+		print(info, url)
+	return (info, url)
+	# return (info, info['formats'][0]['url'])
 
 # Gets theme song of given member from database
 def get_member_theme_song(member: discord.Member):
