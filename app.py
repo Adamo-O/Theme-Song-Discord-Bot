@@ -30,11 +30,10 @@ users = client.theme_songsDB.userData
 # -------------------------------------------
 # Options for YoutubeDL
 YDL_OPTIONS = {
-	'format': 'bestaudio', 
+	'format': 'bestaudio[acodec=opus]',
 	'noplaylist': 'True', 
 	'cookiefile': 'cookies.txt',
-	'audio-quality': 'opus',
-	'acodec': 'opus'
+	'skip_download': 'True',
 } 
 
 # Default theme song duration variables
