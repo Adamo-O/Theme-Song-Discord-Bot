@@ -72,14 +72,12 @@ def search(query: str):
 		try: requests.get(query)
 		except: info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
 		else: info = ydl.extract_info(query, download=False)
-		print(info['formats'])
 		for format in info['formats']:
 			if format['acodec'] == 'opus':
 				url = format['url']
 				break
 		else:
 			url = None
-		print(url)
 	return (info, url)
 	# return (info, info['formats'][0]['url'])
 
