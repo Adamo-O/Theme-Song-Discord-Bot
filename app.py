@@ -76,7 +76,7 @@ def search(query: str):
 		print(info['formats'])
 		for format in info['formats']:
 			if format['acodec'] == 'opus':
-				url = format.url
+				url = format['url']
 				break
 		else:
 			url = None
