@@ -31,7 +31,6 @@ users = client.theme_songsDB.userData
 # Options for YoutubeDL
 YDL_OPTIONS = {
 	'format': 'ba[acodec=opus]',
-	'format_sort': '+codec:avc:opus',
 	'noplaylist': 'True', 
 	'cookiefile': 'cookies.txt',
 	'skip_download': 'True',
