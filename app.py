@@ -276,9 +276,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 	# Runs if member is here now that wasn't before (i.e. member joined)
 	if not before.channel and after.channel:
 		# ratelimit = get_ratelimit(member)
-		print('ratelimit: ', ratelimit)
-		if ratelimit:
-			return
+		# print('ratelimit: ', ratelimit)
+		# if ratelimit:
+		# 	return
 
 		print(f'{str(member.name)} has joined voice channel {member.voice.channel.name} in server: {member.guild.name}')
 		url = get_member_theme_song(member)
