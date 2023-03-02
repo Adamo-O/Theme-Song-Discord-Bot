@@ -251,7 +251,7 @@ async def on_ready():
 cooldown_voice_join_v2 = commands.CooldownMapping.from_cooldown(1, 60.0, commands.BucketType.guild)
 
 def get_ratelimit(member: discord.Member):
-	bucket = cooldown_voice_join_v2.get_bucket(commands.Context)
+	bucket = cooldown_voice_join_v2.get_bucket(commands.context)
 	print('cooldown bucket: ', bucket)
 	return bucket.update_rate_limit()
 
