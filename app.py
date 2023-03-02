@@ -252,10 +252,10 @@ async def on_ready():
 
 cooldown_voice_join_v2 = commands.CooldownMapping.from_cooldown(1, 60.0, commands.BucketType.guild)
 
-def get_ratelimit(member: discord.Member):
-	bucket = cooldown_voice_join_v2
-	print('cooldown bucket: ', bucket)
-	return bucket.update_rate_limit()
+# def get_ratelimit(member: discord.Member):
+# 	bucket = cooldown_voice_join_v2
+# 	print('cooldown bucket: ', bucket)
+# 	return bucket.update_rate_limit()
 
 # last_executed = time.time()
 # def start_event_cooldown():
@@ -275,7 +275,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 
 	# Runs if member is here now that wasn't before (i.e. member joined)
 	if not before.channel and after.channel:
-		ratelimit = get_ratelimit(member)
+		# ratelimit = get_ratelimit(member)
 		print('ratelimit: ', ratelimit)
 		if ratelimit:
 			return
