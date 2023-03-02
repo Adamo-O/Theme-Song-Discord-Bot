@@ -75,10 +75,10 @@ bot = commands.Bot(
 # Unblocking functions for scaling
 # ------------------------------------------
 def to_thread(func: typing.Callable) -> typing.Coroutine:
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
-        return await asyncio.to_thread(func, *args, **kwargs)
-    return wrapper
+	@functools.wraps(func)
+	async def wrapper(*args, **kwargs):
+		return await asyncio.to_thread(func, *args, **kwargs)
+	return wrapper
 
 # -------------------------------------------
 # Helper methods
@@ -251,7 +251,7 @@ async def on_ready():
 cooldown_voice_join_v2 = commands.CooldownMapping.from_cooldown(1, 60.0, commands.BucketType.guild)
 
 def get_ratelimit(member: discord.Member):
-	bucket = cooldown_voice_join_v2.get_bucket(commands.context)
+	bucket = cooldown_voice_join_v2
 	print('cooldown bucket: ', bucket)
 	return bucket.update_rate_limit()
 
@@ -265,6 +265,8 @@ def get_ratelimit(member: discord.Member):
 # Runs when a voice channel updates
 @bot.event
 @commands.Cog.listener()
+@commands.cooldown(1, 60.0, commands.BucketType.guild)
+@to_thread
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
 	# Don't do anything if a bot joins
 	if member.bot:
@@ -290,6 +292,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 	description="Sync bot commands (Server owner only)"
 )
 @commands.cooldown(1, 3600, commands.BucketType.user)
+@to_thread
 async def sync(interaction: discord.Interaction):
 	if interaction.user.id == default_log_user:
 		synced_commands = await bot.tree.sync()
@@ -309,6 +312,7 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 )
 @commands.cooldown(1, 60, commands.BucketType.user)
 @discord.app_commands.autocomplete(user=user_autocomplete)
+@to_thread
 async def print_theme(interaction: discord.Interaction, user: str):
 	if user:
 		member = interaction.guild.get_member_named(user)
@@ -345,6 +349,7 @@ async def print_theme(interaction: discord.Interaction, user: str):
 	description="Change user's theme song to url or search query",
 )
 @commands.cooldown(1, 60, commands.BucketType.user)
+@to_thread
 async def change_theme(interaction: discord.Interaction, song: str, theme_song_duration: float=default_theme_song_duration):
 	print(f'change_theme triggered. Changing {interaction.user.name}\'s theme song to {song} with duration {str(theme_song_duration)}')
 	# If song link is a youtube short, convert to correct youtube link
@@ -379,6 +384,7 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 	description="Change user's outro song to url or search query."
 )
 @commands.cooldown(1, 60, commands.BucketType.user)
+@to_thread
 async def change_outro(interaction: discord.Interaction, song: str, outro_duration: float=default_theme_song_duration):
 	print(f'change outro theme triggered. Changing {interaction.user.name}\'s outro to {song} with duration {str(outro_duration)}')
 	# If song link is a youtube short, convert to correct youtube link
@@ -413,6 +419,7 @@ async def change_outro(interaction: discord.Interaction, song: str, outro_durati
 	description="Change user's theme song duration",
 )
 @commands.cooldown(1, 60, commands.BucketType.user)
+@to_thread
 async def change_song_duration(interaction: discord.Interaction, theme_song_duration: float):
 	print(f'change_song_duration triggered. Changing {interaction.user.name}\'s song duration to {str(theme_song_duration)}')
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
@@ -428,6 +435,7 @@ async def change_song_duration(interaction: discord.Interaction, theme_song_dura
 	description="Change user's outro duration",
 )
 @commands.cooldown(1, 60, commands.BucketType.user)
+@to_thread
 async def change_outro_duration(interaction: discord.Interaction, outro_duration: float):
 	print(f'change_outro_duration triggered. Changing {interaction.user.name}\'s song duration to {str(outro_duration)}')
 	if float(outro_duration) < min_theme_song_duration or float(outro_duration) > max_theme_song_duration:
@@ -443,6 +451,7 @@ async def change_outro_duration(interaction: discord.Interaction, outro_duration
 	description="Trigger outro song and disconnect user."
 )
 @commands.cooldown(1, 60, commands.BucketType.user)
+@to_thread
 async def outro(interaction: discord.Interaction):
 	print(f'Outro for {interaction.user.name}')
 	url = get_member_outro_song(interaction.user)
@@ -459,6 +468,7 @@ async def outro(interaction: discord.Interaction):
 	description="Delete user's theme song",
 )
 @commands.cooldown(1, 60, commands.BucketType.user)
+@to_thread
 async def delete_theme(interaction: discord.Interaction):
 	print(f'delete_theme triggered with user {interaction.user.name}')
 	await interaction.response.send_message('❎ Your theme song has been deleted.', ephemeral=True)
