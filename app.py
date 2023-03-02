@@ -221,7 +221,7 @@ async def play(member: discord.Member, query: str, duration: float):
 	print('Source: ', source)
 
 	# Play audio from youtube video
-	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
+	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback') # TODO: check if method fallback helps
 	voice.is_playing()
 	voice.play(videoSource)
 
