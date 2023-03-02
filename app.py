@@ -93,7 +93,7 @@ def search(query: str):
 		print('info', info)
 		for format in info['formats']:
 			if format['acodec'] == 'opus':
-				url = format['url']
+				url = format['fragments'][0]['url']
 				break
 		else:
 			url = None
