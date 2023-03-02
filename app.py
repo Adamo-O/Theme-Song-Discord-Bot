@@ -192,6 +192,9 @@ async def play(member: discord.Member, query: str, duration: float):
 		
 	# Seach for audio on youtube
 	video, source = search(query)
+	if source is None:
+		return
+		
 	voice = dget(bot.voice_clients, guild=member.guild)
 
 	# Join the channel that the member is connected to
@@ -222,7 +225,8 @@ async def play(member: discord.Member, query: str, duration: float):
 
 	# Play audio from youtube video
 	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback') # TODO: check if method fallback helps
-	voice.is_playing()
+	# voice.is_playing()
+	voice.stop() # TODO check if better
 	voice.play(videoSource)
 
 	# Play for constant amount of time (seconds)
