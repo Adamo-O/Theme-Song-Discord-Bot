@@ -183,7 +183,7 @@ def convert_yt_short(url: str):
 	return url.replace('shorts/', 'watch?v=').replace('?feature=share', '')
 
 # Plays audio of youtube video in member's voice channel via FFmpegOpusAudio
-@to_thread
+# @to_thread
 async def play(member: discord.Member, query: str, duration: float):
 	if query is None:
 		return
@@ -232,7 +232,7 @@ async def play(member: discord.Member, query: str, duration: float):
 	await voice.disconnect()
 
 # Direct messaging for logging
-@to_thread
+# @to_thread
 async def send_message_to_user(message: str, user_id: int=default_log_user):
 	user = bot.get_user(user_id)
 	print(user)
