@@ -12,6 +12,11 @@ from discord.utils import get as dget
 # from youtube_dl import YoutubeDL
 from yt_dlp import YoutubeDL
 
+# Imports for unblocking the blocking functions
+import functools
+import typing
+import time
+
 # from dotenv import load_dotenv
 # load_dotenv()
 # -------------------------------------------
@@ -41,6 +46,9 @@ min_theme_song_duration = 1.0
 max_theme_song_duration = 20.0
 default_theme_song_duration = 10.0
 
+# Cooldown constants
+cooldown_voice_join = 60.0
+
 # Default user used for confirming bot login via DM
 default_log_user = 318887467707138051
 
@@ -62,6 +70,15 @@ bot = commands.Bot(
 	help_command=commands.DefaultHelpCommand(no_category="Theme song commands"),
 	intents=intents
 )
+
+# ------------------------------------------
+# Unblocking functions for scaling
+# ------------------------------------------
+def to_thread(func: typing.Callable) -> typing.Coroutine:
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+    return wrapper
 
 # -------------------------------------------
 # Helper methods
@@ -231,8 +248,23 @@ async def on_ready():
 	await bot.change_presence(activity = discord.Activity(type=discord.ActivityType.listening, name=f'{len(bot.guilds)} servers'))
 	await send_message_to_user(f'Logged in as {bot.user}')
 
+cooldown_voice_join_v2 = commands.CooldownMapping.from_cooldown(1, 60.0, commands.BucketType.guild)
+
+def get_ratelimit(member: discord.Member):
+	bucket = cooldown_voice_join_v2.get_bucket(commands.Context)
+	print('cooldown bucket: ', bucket)
+	return bucket.update_rate_limit()
+
+# last_executed = time.time()
+# def start_event_cooldown():
+# 	if last_executed + cooldown_voice_join < time.time():
+# 		last_executed = time.time()
+# 		return True
+# 	return False
+
 # Runs when a voice channel updates
 @bot.event
+@commands.Cog.listener()
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
 	# Don't do anything if a bot joins
 	if member.bot:
@@ -240,6 +272,11 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 
 	# Runs if member is here now that wasn't before (i.e. member joined)
 	if not before.channel and after.channel:
+		ratelimit = get_ratelimit(member)
+		print('ratelimit: ', ratelimit)
+		if ratelimit:
+			return
+
 		print(f'{str(member.name)} has joined voice channel {member.voice.channel.name} in server: {member.guild.name}')
 		url = get_member_theme_song(member)
 		if url is not None:
@@ -252,6 +289,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 	name="sync",
 	description="Sync bot commands (Server owner only)"
 )
+@commands.cooldown(1, 3600, commands.BucketType.user)
 async def sync(interaction: discord.Interaction):
 	if interaction.user.id == default_log_user:
 		synced_commands = await bot.tree.sync()
@@ -269,6 +307,7 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 	name="print",
 	description="Print the user's theme song and its duration, as well as the outro and its duration.",
 )
+@commands.cooldown(1, 60, commands.BucketType.user)
 @discord.app_commands.autocomplete(user=user_autocomplete)
 async def print_theme(interaction: discord.Interaction, user: str):
 	if user:
@@ -305,6 +344,7 @@ async def print_theme(interaction: discord.Interaction, user: str):
 	name="set",
 	description="Change user's theme song to url or search query",
 )
+@commands.cooldown(1, 60, commands.BucketType.user)
 async def change_theme(interaction: discord.Interaction, song: str, theme_song_duration: float=default_theme_song_duration):
 	print(f'change_theme triggered. Changing {interaction.user.name}\'s theme song to {song} with duration {str(theme_song_duration)}')
 	# If song link is a youtube short, convert to correct youtube link
@@ -338,6 +378,7 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 	name="set-outro",
 	description="Change user's outro song to url or search query."
 )
+@commands.cooldown(1, 60, commands.BucketType.user)
 async def change_outro(interaction: discord.Interaction, song: str, outro_duration: float=default_theme_song_duration):
 	print(f'change outro theme triggered. Changing {interaction.user.name}\'s outro to {song} with duration {str(outro_duration)}')
 	# If song link is a youtube short, convert to correct youtube link
@@ -371,6 +412,7 @@ async def change_outro(interaction: discord.Interaction, song: str, outro_durati
 	name="set-duration",
 	description="Change user's theme song duration",
 )
+@commands.cooldown(1, 60, commands.BucketType.user)
 async def change_song_duration(interaction: discord.Interaction, theme_song_duration: float):
 	print(f'change_song_duration triggered. Changing {interaction.user.name}\'s song duration to {str(theme_song_duration)}')
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
@@ -385,6 +427,7 @@ async def change_song_duration(interaction: discord.Interaction, theme_song_dura
 	name="set-outro-duration",
 	description="Change user's outro duration",
 )
+@commands.cooldown(1, 60, commands.BucketType.user)
 async def change_outro_duration(interaction: discord.Interaction, outro_duration: float):
 	print(f'change_outro_duration triggered. Changing {interaction.user.name}\'s song duration to {str(outro_duration)}')
 	if float(outro_duration) < min_theme_song_duration or float(outro_duration) > max_theme_song_duration:
@@ -399,6 +442,7 @@ async def change_outro_duration(interaction: discord.Interaction, outro_duration
 	name="outro",
 	description="Trigger outro song and disconnect user."
 )
+@commands.cooldown(1, 60, commands.BucketType.user)
 async def outro(interaction: discord.Interaction):
 	print(f'Outro for {interaction.user.name}')
 	url = get_member_outro_song(interaction.user)
@@ -414,6 +458,7 @@ async def outro(interaction: discord.Interaction):
 	name="delete",
 	description="Delete user's theme song",
 )
+@commands.cooldown(1, 60, commands.BucketType.user)
 async def delete_theme(interaction: discord.Interaction):
 	print(f'delete_theme triggered with user {interaction.user.name}')
 	await interaction.response.send_message('❎ Your theme song has been deleted.', ephemeral=True)
