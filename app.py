@@ -339,8 +339,8 @@ async def print_theme(interaction: discord.Interaction, user: str):
 		print(f'print_theme triggered with user: {interaction.user.name}')
 		theme_song = get_member_theme_song(interaction.user)
 		theme_song_duration = get_member_song_duration(interaction.user)
-		outro = get_member_outro_song(member)
-		outro_duration = get_member_outro_duration(member)
+		outro = get_member_outro_song(interaction.user)
+		outro_duration = get_member_outro_duration(interaction.user)
 		if theme_song and outro:
 			await interaction.response.send_message(f'🎵✨ {interaction.user}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.\n\n🎵👋 {member.name}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 		elif theme_song:
