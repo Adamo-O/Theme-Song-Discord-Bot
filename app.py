@@ -348,6 +348,13 @@ async def print_theme(interaction: discord.Interaction, user: str):
 		elif outro:
 			await interaction.response.send_message(f'🎵👋 {interaction.user}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 
+# Print on cooldown
+# @print_theme.error
+@bot.tree.error
+async def on_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+	if isinstance(error, discord.app_commands.CommandOnCooldown):
+		await interaction.response.send_message(str(error), ephemeral=True)
+
 # Change author's theme song to inputted song
 @bot.tree.command(
 	name="set",
