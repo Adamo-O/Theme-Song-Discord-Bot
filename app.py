@@ -272,8 +272,8 @@ cooldown_voice_join_v2 = commands.CooldownMapping.from_cooldown(1, 60.0, command
 
 # Runs when a voice channel updates
 @bot.event
-@commands.Cog.listener()
-@commands.cooldown(1, 60.0, commands.BucketType.guild)
+# @commands.Cog.listener()
+# @commands.cooldown(1, 60.0, commands.BucketType.guild)
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
 	# Don't do anything if a bot joins
 	if member.bot:
