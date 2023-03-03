@@ -316,7 +316,7 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 	name="print",
 	description="Print the user's theme song and its duration, as well as the outro and its duration.",
 )
-@commands.cooldown(1, 60, commands.BucketType.user)
+@discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id))
 @discord.app_commands.autocomplete(user=user_autocomplete)
 async def print_theme(interaction: discord.Interaction, user: str):
 	if user:
