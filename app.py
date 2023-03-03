@@ -221,10 +221,10 @@ async def play(member: discord.Member, query: str, duration: float):
 			'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))}'
 			# 'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))} -c copy -copyts'
 		}
-	print('Source: ', source)
 
 	# Play audio from youtube video
-	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback') # TODO: check if method fallback helps
+	# videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback') # TODO: check if method fallback helps
+	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
 	# voice.is_playing()
 	voice.stop() # TODO check if better
 	voice.play(videoSource)
