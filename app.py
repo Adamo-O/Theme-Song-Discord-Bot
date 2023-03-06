@@ -485,4 +485,4 @@ async def on_command_error(interaction: discord.Interaction, error: discord.app_
 
 # Run bot using secret token
 if __name__ == '__main__':
-	bot.run(os.environ.get('DISCORD_TOKEN'))
+	bot.run(os.environ.get('DISCORD_TOKEN'), reconnect=True)
