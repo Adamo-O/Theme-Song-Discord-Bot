@@ -75,10 +75,20 @@ bot = commands.Bot(
 # ------------------------------------------
 # Unblocking functions for scaling
 # ------------------------------------------
+# Python > 3.9
+# def to_thread(func: typing.Callable) -> typing.Coroutine:
+# 	@functools.wraps(func)
+# 	async def wrapper(*args, **kwargs):
+# 		return await asyncio.to_thread(func, *args, **kwargs)
+# 	return wrapper
+
+# Python < 3.9
 def to_thread(func: typing.Callable) -> typing.Coroutine:
 	@functools.wraps(func)
 	async def wrapper(*args, **kwargs):
-		return await asyncio.to_thread(func, *args, **kwargs)
+			loop = asyncio.get_event_loop()
+			wrapped = functools.partial(func, *args, **kwargs)
+			return await loop.run_in_executor(None, wrapped)
 	return wrapper
 
 # -------------------------------------------
@@ -90,7 +100,6 @@ def search(query: str):
 		try: requests.get(query)
 		except: info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
 		else: info = ydl.extract_info(query, download=False)
-		print('info', info)
 		for format in info['formats']:
 			if format['acodec'] == 'opus':
 				url = format['fragments'][0]['url']
@@ -185,7 +194,7 @@ def convert_yt_short(url: str):
 	return url.replace('shorts/', 'watch?v=').replace('?feature=share', '')
 
 # Plays audio of youtube video in member's voice channel via FFmpegOpusAudio
-# @to_thread
+@to_thread
 async def play(member: discord.Member, query: str, duration: float):
 	if query is None:
 		return
@@ -318,8 +327,8 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 )
 @discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
 @discord.app_commands.autocomplete(user=user_autocomplete)
-async def print_theme(interaction: discord.Interaction, user: str):
-	if user:
+async def print_theme(interaction: discord.Interaction, user: str=''):
+	if user != '':
 		member = interaction.guild.get_member_named(user)
 		if member is None:
 			await interaction.response.send_message(f'Could not find user {user}.', ephemeral=True)
