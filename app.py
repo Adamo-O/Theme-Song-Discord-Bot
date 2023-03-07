@@ -327,8 +327,8 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 )
 @discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
 @discord.app_commands.autocomplete(user=user_autocomplete)
-async def print_theme(interaction: discord.Interaction, user: str=''):
-	if user != '':
+async def print_theme(interaction: discord.Interaction, user: str):
+	if user:
 		member = interaction.guild.get_member_named(user)
 		if member is None:
 			await interaction.response.send_message(f'Could not find user {user}.', ephemeral=True)
