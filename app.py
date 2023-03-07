@@ -86,9 +86,8 @@ bot = commands.Bot(
 def to_thread(func: typing.Callable) -> typing.Coroutine:
 	@functools.wraps(func)
 	async def wrapper(*args, **kwargs):
-			loop = asyncio.get_event_loop()
-			wrapped = functools.partial(func, *args, **kwargs)
-			return await loop.run_in_executor(None, wrapped)
+		wrapped = functools.partial(func, *args, **kwargs)
+		return await bot.loop.run_in_executor(None, wrapped)
 	return wrapper
 
 # -------------------------------------------
@@ -195,6 +194,22 @@ def convert_yt_short(url: str):
 
 # Plays audio of youtube video in member's voice channel via FFmpegOpusAudio
 # @to_thread
+async def playAudio(voice: discord.VoiceClient, source: str, FFMPEG_OPTIONS: dict[str, str], duration: float):
+	# Play audio from youtube video
+	# videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback') # TODO: check if method fallback helps
+	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
+	# voice.is_playing()
+	voice.stop() # TODO check if better
+	voice.play(videoSource)
+
+	# Play for constant amount of time (seconds)
+	await asyncio.sleep(duration)
+
+	voice.stop()
+	
+	# Disconnect from current voice channel
+	await voice.disconnect()
+
 async def play(member: discord.Member, query: str, duration: float):
 	if query is None:
 		return
@@ -204,7 +219,7 @@ async def play(member: discord.Member, query: str, duration: float):
 	if source is None:
 		return
 		
-	voice = dget(bot.voice_clients, guild=member.guild)
+	voice: discord.VoiceClient = dget(bot.voice_clients, guild=member.guild)
 
 	# Join the channel that the member is connected to
 	channel = member.voice.channel
@@ -231,20 +246,23 @@ async def play(member: discord.Member, query: str, duration: float):
 			# 'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))} -c copy -copyts'
 		}
 
-	# Play audio from youtube video
-	# videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback') # TODO: check if method fallback helps
-	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
-	# voice.is_playing()
-	voice.stop() # TODO check if better
-	voice.play(videoSource)
+	await bot.loop.run_in_executor(None, playAudio, voice, source, FFMPEG_OPTIONS, duration)
+	# await playAudio(voice, source, FFMPEG_OPTIONS, duration)
 
-	# Play for constant amount of time (seconds)
-	await asyncio.sleep(duration)
+	# # Play audio from youtube video
+	# # videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback') # TODO: check if method fallback helps
+	# videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
+	# # voice.is_playing()
+	# voice.stop() # TODO check if better
+	# voice.play(videoSource)
 
-	voice.stop()
+	# # Play for constant amount of time (seconds)
+	# await asyncio.sleep(duration)
+
+	# voice.stop()
 	
-	# Disconnect from current voice channel
-	await voice.disconnect()
+	# # Disconnect from current voice channel
+	# await voice.disconnect()
 
 # Direct messaging for logging
 # @to_thread
