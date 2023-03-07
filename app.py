@@ -194,7 +194,7 @@ def convert_yt_short(url: str):
 	return url.replace('shorts/', 'watch?v=').replace('?feature=share', '')
 
 # Plays audio of youtube video in member's voice channel via FFmpegOpusAudio
-@to_thread
+# @to_thread
 async def play(member: discord.Member, query: str, duration: float):
 	if query is None:
 		return
