@@ -207,6 +207,9 @@ def playAudio(voice: discord.VoiceClient, videoSource, duration: float):
 	time.sleep(duration)
 
 	voice.stop()
+
+	bot.loop.create_task(voice.disconnect())
+	# bot.loop.run_in_executor(None, voice.disconnect)
 	
 	# # Disconnect from current voice channel
 	# await voice.disconnect()
@@ -265,7 +268,7 @@ async def play(member: discord.Member, query: str, duration: float):
 	# voice.stop()
 	
 	# # Disconnect from current voice channel
-	await bot.loop.run_in_executor(None, voice.disconnect)
+	# await bot.loop.run_in_executor(None, voice.disconnect)
 	# await voice.disconnect()
 
 # Direct messaging for logging
