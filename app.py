@@ -269,8 +269,8 @@ async def play(member: discord.Member, query: str, duration: float):
 	# voice.stop()
 	
 	# # Disconnect from current voice channel
-	await bot.loop.run_in_executor(None, voice.disconnect)
-	# await voice.disconnect()
+	# await bot.loop.run_in_executor(None, voice.disconnect)
+	await voice.disconnect()
 
 # Direct messaging for logging
 # @to_thread
