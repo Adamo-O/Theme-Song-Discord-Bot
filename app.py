@@ -208,7 +208,7 @@ def playAudio(voice: discord.VoiceClient, videoSource, duration: float):
 
 	voice.stop()
 
-	bot.loop.create_task(voice.disconnect())
+	# bot.loop.create_task(voice.disconnect())
 	# bot.loop.run_in_executor(None, voice.disconnect)
 	
 	# # Disconnect from current voice channel
@@ -256,7 +256,8 @@ async def play(member: discord.Member, query: str, duration: float):
 	# # Play audio from youtube video
 	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback') # TODO: check if method fallback helps
 	
-	await bot.loop.run_in_executor(None, playAudio, voice, videoSource, duration)
+	# TODO test out create_task() instead of run_in_executor
+	await bot.loop.run_in_executor(None, playAudio, voice, videoSource, duration) 
 	# videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
 	# # voice.is_playing()
 	# voice.stop() # TODO check if better
@@ -268,7 +269,7 @@ async def play(member: discord.Member, query: str, duration: float):
 	# voice.stop()
 	
 	# # Disconnect from current voice channel
-	# await bot.loop.run_in_executor(None, voice.disconnect)
+	await bot.loop.run_in_executor(None, voice.disconnect)
 	# await voice.disconnect()
 
 # Direct messaging for logging
