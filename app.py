@@ -306,7 +306,8 @@ async def change_theme_user(interaction: discord.Interaction, user: typing.Union
 			theme_song_duration = float(video_duration) - start_time
 		
 		if set_member_song_duration(user, theme_song_duration):
-			await interaction.response.send_message(f'✅ {"Your" if interaction.user == user else user.display_name + "'s" } theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+			username = "Your" if interaction.user.id == user.id else f'{user.display_name}\'s'
+			await interaction.response.send_message(f'✅ {username} theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
 		else:
 			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
 
@@ -335,7 +336,8 @@ async def change_outro_user(interaction: discord.Interaction, user: typing.Union
 			outro_duration = float(video_duration) - start_time
 		
 		if set_outro_duration(user, outro_duration):
-			await interaction.response.send_message(f'✅ {"Your" if interaction.user == user else user.display_name + "'s" } outro is now {song}.\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
+			username = "Your" if interaction.user.id == user.id else f'{user.display_name}\'s'
+			await interaction.response.send_message(f'✅ {username} outro is now {song}.\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 		else:
 			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without an outro.', ephemeral=True)
 
