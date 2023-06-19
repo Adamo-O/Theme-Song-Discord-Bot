@@ -281,6 +281,35 @@ async def send_message_to_user(message: str, user_id: int=default_log_user):
 		await user.send(message)
 	return
 
+async def change_theme_user(interaction: discord.Interaction, user: discord.User | discord.Member, song: str, theme_song_duration: float=default_theme_song_duration):
+	print(f'change_theme triggered. Changing {user.name}\'s theme song to {song} with duration {str(theme_song_duration)}')
+	# If song link is a youtube short, convert to correct youtube link
+	if 'shorts' in song and 'http' in song:
+		song = convert_yt_short(song)
+
+	set_member_theme_song(user, song)
+	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
+		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+	else:
+		# If video duration is shorter than theme song duration, set it to video duration
+		video, source = search(song)
+		url_start_time = re.search("\?t=\d+", song)
+		if (url_start_time is None):
+			start_time = 0.0
+		else:
+			start_time = float(url_start_time.group()[3:])
+
+		video_duration = video['duration']
+		if theme_song_duration > float(video_duration):
+			theme_song_duration = float(video_duration)
+		elif start_time + theme_song_duration > float(video_duration):
+			theme_song_duration = float(video_duration) - start_time
+		
+		if set_member_song_duration(user, theme_song_duration):
+			await interaction.response.send_message(f'✅ Your theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+		else:
+			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
+
 # -------------------------------------------
 # Events
 # -------------------------------------------
@@ -390,33 +419,51 @@ async def print_theme(interaction: discord.Interaction, user: str):
 )
 @discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
 async def change_theme(interaction: discord.Interaction, song: str, theme_song_duration: float=default_theme_song_duration):
-	print(f'change_theme triggered. Changing {interaction.user.name}\'s theme song to {song} with duration {str(theme_song_duration)}')
-	# If song link is a youtube short, convert to correct youtube link
-	if 'shorts' in song and 'http' in song:
-		song = convert_yt_short(song)
+	await change_theme_user(interaction, interaction.user, song, theme_song_duration)
 
-	set_member_theme_song(interaction.user, song)
-	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
-		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+# Change author's theme song to inputted song
+@bot.tree.command(
+	name="set-other",
+	description="Change *other* user's theme song to url or search query. Be careful with this one!",
+)
+@discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
+@discord.app_commands.guild_only()
+@discord.app_commands.autocomplete(user=user_autocomplete)
+@discord.app_commands.default_permissions()
+async def change_theme_other(interaction: discord.Interaction, user: str, song: str, theme_song_duration: float=default_theme_song_duration):
+	member = interaction.guild.get_member_named(user)
+	if member is None:
+		await interaction.response.send_message(f'Could not find user {user}.', ephemeral=True)
 	else:
-		# If video duration is shorter than theme song duration, set it to video duration
-		video, source = search(song)
-		url_start_time = re.search("\?t=\d+", song)
-		if (url_start_time is None):
-			start_time = 0.0
-		else:
-			start_time = float(url_start_time.group()[3:])
+		await change_theme_user(interaction, member, song, theme_song_duration)
 
-		video_duration = video['duration']
-		if theme_song_duration > float(video_duration):
-			theme_song_duration = float(video_duration)
-		elif start_time + theme_song_duration > float(video_duration):
-			theme_song_duration = float(video_duration) - start_time
+	# print(f'change_theme triggered. Changing {interaction.user.name}\'s theme song to {song} with duration {str(theme_song_duration)}')
+	# # If song link is a youtube short, convert to correct youtube link
+	# if 'shorts' in song and 'http' in song:
+	# 	song = convert_yt_short(song)
+
+	# set_member_theme_song(interaction.user, song)
+	# if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
+	# 	await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+	# else:
+	# 	# If video duration is shorter than theme song duration, set it to video duration
+	# 	video, source = search(song)
+	# 	url_start_time = re.search("\?t=\d+", song)
+	# 	if (url_start_time is None):
+	# 		start_time = 0.0
+	# 	else:
+	# 		start_time = float(url_start_time.group()[3:])
+
+	# 	video_duration = video['duration']
+	# 	if theme_song_duration > float(video_duration):
+	# 		theme_song_duration = float(video_duration)
+	# 	elif start_time + theme_song_duration > float(video_duration):
+	# 		theme_song_duration = float(video_duration) - start_time
 		
-		if set_member_song_duration(interaction.user, theme_song_duration):
-			await interaction.response.send_message(f'✅ Your theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
-		else:
-			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
+	# 	if set_member_song_duration(interaction.user, theme_song_duration):
+	# 		await interaction.response.send_message(f'✅ Your theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+	# 	else:
+	# 		await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
 
 @bot.tree.command(
 	name="set-outro",
