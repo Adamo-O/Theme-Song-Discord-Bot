@@ -281,7 +281,7 @@ async def send_message_to_user(message: str, user_id: int=default_log_user):
 		await user.send(message)
 	return
 
-async def change_theme_user(interaction: discord.Interaction, user: discord.User | discord.Member, song: str, theme_song_duration: float=default_theme_song_duration):
+async def change_theme_user(interaction: discord.Interaction, user: typing.Union[discord.User, discord.Member], song: str, theme_song_duration: float=default_theme_song_duration):
 	print(f'change_theme triggered. Changing {user.name}\'s theme song to {song} with duration {str(theme_song_duration)}')
 	# If song link is a youtube short, convert to correct youtube link
 	if 'shorts' in song and 'http' in song:
