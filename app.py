@@ -41,9 +41,9 @@ YDL_OPTIONS = {
 	'cookiefile': 'cookies.txt',
 	'skip_download': 'True',
 	# 'cookiesfrombrowser': ('chrome', ),
-	'http_headers': {
-		'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
-	},
+	# 'http_headers': {
+	# 	'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+	# },
 	# 'postprocessor_args': {
 	# }
 } 
@@ -103,11 +103,14 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 def search(query: str):
 	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try: requests.get(query)
-		except: info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
+		except: 
+			print('extracted info:', ydl.extract_info(f"ytsearch:{query}", download=False))
+			info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
+			print('extracted info [entries][0]:', info)
 		else: info = ydl.extract_info(query, download=False)
 		for format in info['formats']:
 			print(format)
-			if format['acodec'] == 'opus':
+			if 'acodec' in format and format['acodec'] == 'opus':
 				url = format['fragments'][0]['url']
 				break
 		else:
