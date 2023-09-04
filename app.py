@@ -111,7 +111,8 @@ def search(query: str):
 		for format in info['formats']:
 			print(format)
 			if 'acodec' in format and format['acodec'] == 'opus':
-				url = format['fragments'][0]['url']
+				url = format['url']
+				# url = format['fragments'][0]['url']
 				break
 		else:
 			url = None
