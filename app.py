@@ -40,6 +40,10 @@ YDL_OPTIONS = {
 	'noplaylist': 'True', 
 	'cookiefile': 'cookies.txt',
 	'skip_download': 'True',
+	'cookiesfrombrowser': 'chrome',
+	# 'http_headers': '',
+	# 'postprocessor_args': {
+	# }
 } 
 
 # Default theme song duration variables
