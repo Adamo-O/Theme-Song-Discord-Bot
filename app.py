@@ -40,7 +40,7 @@ YDL_OPTIONS = {
 	'noplaylist': 'True', 
 	'cookiefile': 'cookies.txt',
 	'skip_download': 'True',
-	'cookiesfrombrowser': 'chrome',
+	'cookiesfrombrowser': ('chrome', ),
 	# 'http_headers': '',
 	# 'postprocessor_args': {
 	# }
