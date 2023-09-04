@@ -106,6 +106,7 @@ def search(query: str):
 		except: info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
 		else: info = ydl.extract_info(query, download=False)
 		for format in info['formats']:
+			print(format)
 			if format['acodec'] == 'opus':
 				url = format['fragments'][0]['url']
 				break
