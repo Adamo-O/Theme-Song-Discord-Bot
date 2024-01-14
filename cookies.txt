@@ -1,0 +1,17 @@
+# Netscape HTTP Cookie File
+# http://curl.haxx.se/rfc/cookie_spec.html
+# This is a generated file!  Do not edit.
+
+.youtube.com	TRUE	/	TRUE	1705091113	GPS	1
+.youtube.com	TRUE	/	TRUE	0	YSC	-zHFoMW0xfk
+.youtube.com	TRUE	/	TRUE	1720641313	VISITOR_INFO1_LIVE	ncr1krPWpL0
+.youtube.com	TRUE	/	TRUE	1720641313	VISITOR_PRIVACY_METADATA	CgJDQRIEGgAgNw%3D%3D
+.youtube.com	TRUE	/	TRUE	1739649901	PREF	f4=4000000&f6=40000000&tz=America.Toronto
+developer.chrome.com	FALSE	/	FALSE	1739649527	_ga_devsite	GA1.3.3106497720.1705089526
+developer.chrome.com	FALSE	/	FALSE	1720641527	django_language	en
+.chrome.com	TRUE	/	FALSE	1739649527	_ga	GA1.1.1914063513.1705089528
+.chrome.com	TRUE	/	FALSE	1739649527	_ga_H1Y3PXZW9Q	GS1.1.1705089527.1.0.1705089527.0.0.0
+.google.com	TRUE	/	TRUE	1707681839	1P_JAR	2024-01-12-20
+.google.com	TRUE	/	TRUE	1720641836	AEC	Ae3NU9Ogq718ZYKUh9se_-CJaFYf8aCSjzk_f6Bnk8sRmq7fM2oCvBfVbw
+www.google.com	FALSE	/	FALSE	1705090437	DV	k1HNDDIXwDISIDlq9acmfs7Sh2L0zxg
+.google.com	TRUE	/	TRUE	1720901036	NID	511=ElWqx6qdLX4Rkzq9817ruUF3xQ4P9mwIIzTq3KsaDv_DjztnVpmg-TVhsjz1JHB_2Y_vGwnWIvjBlX_I9qEttvC2ve4WGxGi-xDSHwc2dS-KWZLI036LBbyb9sH0fzJAQENeF_actTlcRQj_j889Wtst6QbLJEwfeDX1Qx89gPq3D7YM-NAFAgQ
