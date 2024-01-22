@@ -24,7 +24,7 @@ This Discord bot plays a unique theme song for each user when they enter a voice
 
 ## Support 🆘
 
-For support or if you would like to make suggestions for the bot, join the [Theme Song Welcome Bot Support Server](https://discord.gg/bk885rAg)!
+For support or if you would like to make suggestions for the bot, join the [Theme Song Welcome Bot Support Server](https://discord.gg/jEqryCFtWj)!
 
 Otherwise, you can reach me at [adamo.orsini01@gmail.com](mailto:adamo.orsini01@gmail.com) and I'll respond as soon as possible!
 
