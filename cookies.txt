@@ -2,8 +2,6 @@
 # http://curl.haxx.se/rfc/cookie_spec.html
 # This is a generated file!  Do not edit.
 
-.youtube.com	TRUE	/	TRUE	1706819313	GPS	1
-.youtube.com	TRUE	/	TRUE	0	YSC	g67W-mPO5No
-.youtube.com	TRUE	/	TRUE	1722369513	VISITOR_INFO1_LIVE	Q0r29J-Uvi4
-.youtube.com	TRUE	/	TRUE	1722369513	VISITOR_PRIVACY_METADATA	CgJDQRIEGgAgJQ%3D%3D
-.youtube.com	TRUE	/	TRUE	1741377521	PREF	f6=40000000&tz=America.Toronto
+.youtube.com	TRUE	/	TRUE	1721410577	GPS	1
+.youtube.com	TRUE	/	TRUE	1755969093	PREF	f6=40000000&tz=America.Toronto&f7=100
+.youtube.com	TRUE	/	TRUE	1721409578	CONSISTENCY	AKreu9uEtjKJCpVZuTrCRmm0JkzLG9Z-WyyVWmWJS5RcjYl5M60rWSNX7OGHzb4OgkAMRVtQXH5A2GhqLYS_XIYbM_YFr_qwHKrUsFgrWABfUu4U7DFy4nnmqfb_78BiBqMFIq20io8v6dcW5TRCjJA
