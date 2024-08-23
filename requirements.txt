@@ -4,7 +4,8 @@ pymongo==4.1.1
 PyNaCl==1.4.0
 requests==2.32.2
 # yt-dlp @ https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
-yt-dlp @ https://github.com/yt-dlp/yt-dlp/releases/download/2024.07.16/yt-dlp.tar.gz
+yt-dlp @ https://github.com/yt-dlp/yt-dlp/releases/download/2024.08.06/yt-dlp.tar.gz
+# yt-dlp @ https://github.com/yt-dlp/yt-dlp/releases/download/2024.07.16/yt-dlp.tar.gz
 # yt-dlp @ https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.tar.gz
 yt-dlp-youtube-oauth2 @ https://github.com/coletdjnz/yt-dlp-youtube-oauth2/archive/refs/heads/master.zip
 curl_cffi==0.7.1
