@@ -38,7 +38,8 @@ YDL_OPTIONS = {
 	'format': 'bestaudio',
 	# 'format': 'ba[acodec=opus]',
 	'noplaylist': 'True', 
-	'cookiefile': 'cookies.txt',
+	# 'cookies': 'cookies.txt',
+	# 'cookiefile': 'cookies.txt',
 	'skip_download': 'True',
 	# 'cookiesfrombrowser': ('chrome', ),
 	# 'http_headers': {
