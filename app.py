@@ -1,7 +1,8 @@
 import asyncio
 import discord
 import os
-import requests
+from curl_cffi import requests
+# import requests
 import re
 import datetime
 
@@ -105,16 +106,16 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # Search YoutubeDL for query/url and returns (info, url)
 def search(query: str):
 	with YoutubeDL(YDL_OPTIONS) as ydl:
-		try: requests.get(query)
+		try: requests.get(query, impersonate="chrome")
 		except: 
 			print('extracted info:', ydl.extract_info(f"ytsearch:{query}", download=False))
 			info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
 			print('extracted info [entries][0]:', info)
 		else: info = ydl.extract_info(query, download=False)
 		for format in info['formats']:
-			print(format)
 			if 'acodec' in format and format['acodec'] == 'opus':
 				url = format['url']
+				print(url)
 				# url = format['fragments'][0]['url']
 				break
 		else:
