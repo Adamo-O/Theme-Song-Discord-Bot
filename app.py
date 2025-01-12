@@ -13,6 +13,8 @@ from discord.utils import get as dget
 # from youtube_dl import YoutubeDL
 from yt_dlp import YoutubeDL
 
+# from curl_cffi import requests as req_curl
+
 # Imports for unblocking the blocking functions
 import functools
 import typing
@@ -112,6 +114,11 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # -------------------------------------------
 # Search YoutubeDL for query/url and returns (info, url)
 def search(query: str):
+	if not os.path.exists('cookies.txt'):
+		print("Cookies file not found.")
+	else:
+		print("Cookies file loaded successfully.")
+
 	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try: requests.get(query)
 		except: 
