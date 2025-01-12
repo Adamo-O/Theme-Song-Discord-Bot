@@ -51,11 +51,12 @@ YDL_OPTIONS = {
 	# },
 	# 'postprocessor_args': {
 	# }
-#  'extractaudio': True,
- 'postprocessors': [{
+	#  'extractaudio': True,
+ 	'postprocessors': [{
 		'key': 'FFmpegExtractAudio',
 		'preferredcodec': 'm4a',
-	}]
+	}],
+  'verbose': True,
 } 
 
 # Default theme song duration variables
