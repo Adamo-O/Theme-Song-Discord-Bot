@@ -114,11 +114,6 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # -------------------------------------------
 # Search YoutubeDL for query/url and returns (info, url)
 def search(query: str):
-	if not os.path.exists('cookies.txt'):
-		print("Cookies file not found.")
-	else:
-		print("Cookies file loaded successfully.")
-
 	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try: requests.get(query)
 		except: 
