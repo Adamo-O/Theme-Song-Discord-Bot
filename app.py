@@ -42,12 +42,12 @@ YDL_OPTIONS = {
  	# 'format': 'm4a/bestaudio/best',
 	# 'format': 'ba[acodec=opus]',
 	'noplaylist': 'True', 
-	# 'cookies': 'cookies.txt',
-	# 'cookiefile': 'cookies.txt',
+	'cookies': 'cookies.txt',
+	'cookiefile': 'cookies.txt',
  	# 'username': 'oauth2',
   # 'password': '',
 	'skip_download': 'True',
-	'cookiesfrombrowser': ('chrome', ),
+	# 'cookiesfrombrowser': ('chrome', ),
 	# 'http_headers': {
 	# 	'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 	# },
