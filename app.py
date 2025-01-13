@@ -38,26 +38,26 @@ users = client.theme_songsDB.userData
 # -------------------------------------------
 # Options for YoutubeDL
 YDL_OPTIONS = {
-	# 'format': 'bestaudio',
- 	'format': 'm4a/bestaudio/best',
+	'format': 'bestaudio',
+ 	# 'format': 'm4a/bestaudio/best',
 	# 'format': 'ba[acodec=opus]',
 	'noplaylist': 'True', 
-	'cookies': 'cookies.txt',
-	'cookiefile': 'cookies.txt',
+	# 'cookies': 'cookies.txt',
+	# 'cookiefile': 'cookies.txt',
  	# 'username': 'oauth2',
   # 'password': '',
 	'skip_download': 'True',
-	# 'cookiesfrombrowser': ('firefox', ),
+	'cookiesfrombrowser': ('chrome', ),
 	# 'http_headers': {
 	# 	'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
 	# },
 	# 'postprocessor_args': {
 	# }
 	#  'extractaudio': True,
- 	'postprocessors': [{
-		'key': 'FFmpegExtractAudio',
-		'preferredcodec': 'm4a',
-	}],
+ 	# 'postprocessors': [{
+	# 	'key': 'FFmpegExtractAudio',
+	# 	'preferredcodec': 'm4a',
+	# }],
   'verbose': True,
 } 
 
