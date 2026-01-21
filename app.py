@@ -65,7 +65,7 @@ YDL_OPTIONS = {
 	'quiet': True,
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
-	'js_runtimes': 'nodejs',
+	'js_runtimes': {'nodejs': {}},
 } 
 
 # Default theme song duration variables
