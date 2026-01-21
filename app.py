@@ -32,6 +32,16 @@ password = os.environ.get('MONGODB_PASSWORD')
 
 client = MongoClient(uri, username='admin', password=password)
 
+# -------------------------------------------
+# YouTube cookies (for authentication)
+# -------------------------------------------
+# Write cookies from environment variable to file if present
+youtube_cookies = os.environ.get('YOUTUBE_COOKIES')
+if youtube_cookies:
+	with open('cookies.txt', 'w') as f:
+		f.write(youtube_cookies)
+	print('YouTube cookies loaded from environment variable')
+
 users = client.theme_songsDB.userData
 
 # -------------------------------------------
@@ -44,7 +54,7 @@ YDL_OPTIONS = {
 	'skip_download': True,
 	'quiet': True,
 	'no_warnings': False,
-	'extractor_args': {'youtube': {'js_runtimes': ['nodejs']}},
+	'cookiefile': 'cookies.txt',
 } 
 
 # Default theme song duration variables
