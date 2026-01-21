@@ -24,7 +24,7 @@ import time
 # load_dotenv()
 
 # -------------------------------------------
-# MongoDB and Heroku connections
+# MongoDB connection
 # -------------------------------------------
 
 uri = os.environ.get('MONGODB_URI')
@@ -39,17 +39,11 @@ users = client.theme_songsDB.userData
 # -------------------------------------------
 # Options for YoutubeDL
 YDL_OPTIONS = {
-	'format': 'bestaudio/best',  # Fallback to best if no audio-only
+	'format': 'bestaudio/best',
 	'noplaylist': True,
 	'skip_download': True,
 	'quiet': True,
-	'no_warnings': False,  # Keep warnings for debugging
-	'extractor_args': {
-		'youtube': {
-			'player_client': ['android', 'web'],
-			'formats': ['missing_pot'],  # Force formats even without PO Token
-		}
-	},
+	'no_warnings': False,
 } 
 
 # Default theme song duration variables
@@ -103,67 +97,8 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # -------------------------------------------
 # Helper methods
 # -------------------------------------------
-# Extract video ID from YouTube URL
-def extract_video_id(url: str) -> str:
-	video_id = None
-	if 'youtu.be/' in url:
-		video_id = url.split('youtu.be/')[-1].split('?')[0]
-	elif 'youtube.com/watch' in url:
-		match = re.search(r'[?&]v=([^&]+)', url)
-		if match:
-			video_id = match.group(1)
-	elif 'youtube.com/shorts/' in url:
-		video_id = url.split('shorts/')[-1].split('?')[0]
-	return video_id
-
-# Try to get audio URL using Cobalt API (v10+)
-def try_cobalt_api(video_id: str):
-	cobalt_instances = [
-		'https://cobalt-api.ayo.tf',
-		'https://api.cobalt.tools',
-	]
-	for instance in cobalt_instances:
-		try:
-			print(f'Trying Cobalt: {instance}')
-			response = requests.post(
-				instance,  # POST to root endpoint
-				json={
-					'url': f'https://www.youtube.com/watch?v={video_id}',
-					'downloadMode': 'audio',
-					'audioFormat': 'opus',
-				},
-				headers={
-					'Accept': 'application/json',
-					'Content-Type': 'application/json',
-				},
-				timeout=15
-			)
-			print(f'Cobalt response: {response.status_code}')
-			if response.status_code == 200:
-				data = response.json()
-				print(f'Cobalt data: {data}')
-				# v10 returns 'url' directly for redirect, or 'audio' for stream
-				audio_url = data.get('url') or data.get('audio')
-				if audio_url:
-					print(f'Cobalt success: got audio URL')
-					return {'url': audio_url, 'duration': 0, 'title': video_id}, audio_url
-			print(f'Cobalt {instance} failed: {response.status_code} {response.text[:200]}')
-		except Exception as e:
-			print(f'Cobalt {instance} error: {e}')
-	return None, None
-
 # Search YoutubeDL for query/url and returns (info, url)
 def search(query: str):
-	# For YouTube URLs, try Cobalt API first (bypasses IP blocks)
-	if 'youtube.com' in query or 'youtu.be' in query:
-		video_id = extract_video_id(query)
-		if video_id:
-			info, url = try_cobalt_api(video_id)
-			if url:
-				return (info, url)
-			print('Cobalt failed, trying yt-dlp...')
-
-	# Fall back to yt-dlp
 	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try:
 			# Check if query is a URL
