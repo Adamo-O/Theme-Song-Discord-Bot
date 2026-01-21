@@ -6,7 +6,7 @@ import requests
 import re
 import datetime
 
-from pymongo import MongoClient
+from pymongo.mongo_client import MongoClient
 from discord import FFmpegOpusAudio
 from discord.ext import commands
 from discord.utils import get as dget
@@ -38,27 +38,12 @@ users = client.theme_songsDB.userData
 # -------------------------------------------
 # Options for YoutubeDL
 YDL_OPTIONS = {
-	'format': 'bestaudio',
- 	# 'format': 'm4a/bestaudio/best',
-	# 'format': 'ba[acodec=opus]',
-	'noplaylist': 'True', 
-	'cookies': 'cookies.txt',
+	'format': 'bestaudio/best',  # Fallback to best if no audio-only
+	'noplaylist': True,
 	'cookiefile': 'cookies.txt',
- 	# 'username': 'oauth2',
-  # 'password': '',
-	'skip_download': 'True',
-	# 'cookiesfrombrowser': ('chrome', ),
-	# 'http_headers': {
-	# 	'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
-	# },
-	# 'postprocessor_args': {
-	# }
-	#  'extractaudio': True,
- 	# 'postprocessors': [{
-	# 	'key': 'FFmpegExtractAudio',
-	# 	'preferredcodec': 'm4a',
-	# }],
-  'verbose': True,
+	'skip_download': True,
+	'quiet': True,
+	'no_warnings': False,  # Keep warnings for debugging
 } 
 
 # Default theme song duration variables
@@ -115,22 +100,41 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # Search YoutubeDL for query/url and returns (info, url)
 def search(query: str):
 	with YoutubeDL(YDL_OPTIONS) as ydl:
-		try: requests.get(query)
-		except: 
-			print('extracted info:', ydl.extract_info(f"ytsearch:{query}", download=False))
-			info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
-			print('extracted info [entries][0]:', info)
-		else: info = ydl.extract_info(query, download=False)
-		for format in info['formats']:
-			if 'acodec' in format and format['acodec'] == 'opus':
-				url = format['url']
-				print(url)
-				# url = format['fragments'][0]['url']
-				break
+		try:
+			# Check if query is a URL
+			requests.get(query)
+			info = ydl.extract_info(query, download=False)
+		except requests.exceptions.RequestException:
+			# Not a URL, search for it
+			try:
+				info = ydl.extract_info(f"ytsearch:{query}", download=False)
+				if 'entries' in info and info['entries']:
+					info = info['entries'][0]
+				else:
+					print(f'No search results for: {query}')
+					return (None, None)
+			except Exception as e:
+				print(f'yt-dlp search error: {e}')
+				return (None, None)
+		except Exception as e:
+			print(f'yt-dlp extraction error: {e}')
+			return (None, None)
+
+		# Get the best audio URL - prefer opus but accept any audio format
+		url = info.get('url')
+		if not url:
+			for fmt in info.get('formats', []):
+				if fmt.get('acodec') and fmt.get('acodec') != 'none':
+					url = fmt.get('url')
+					if fmt.get('acodec') == 'opus':
+						break  # Prefer opus if available
+
+		if url:
+			print(f'Found audio URL for: {query}')
 		else:
-			url = None
+			print(f'Could not find audio URL for: {query}')
+
 	return (info, url)
-	# return (info, info['formats'][0]['url'])
 
 # Gets theme song of given member from database
 def get_member_theme_song(member: discord.Member):
@@ -241,60 +245,56 @@ def playAudio(voice: discord.VoiceClient, videoSource, duration: float):
 async def play(member: discord.Member, query: str, duration: float):
 	if query is None:
 		return
-		
-	# Seach for audio on youtube
-	video, source = search(query)
-	if source is None:
-		return
-		
-	voice: discord.VoiceClient = dget(bot.voice_clients, guild=member.guild)
 
-	# Join the channel that the member is connected to
-	channel = member.voice.channel
-	if voice and voice.is_connected():
-		await voice.move_to(channel)
-	else:
-		voice = await channel.connect()
+	try:
+		# Search for audio on youtube
+		video, source = search(query)
+		if video is None or source is None:
+			print(f'Failed to get audio for {member.name}: {query}')
+			return
 
-	# Options for FFmpeg
-	url_start_time = re.search("\?t=\d+", query)
+		voice: discord.VoiceClient = dget(bot.voice_clients, guild=member.guild)
 
-	if (url_start_time is None):
-		FFMPEG_OPTIONS = {
-			'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-			'options': '-vn'
-		}
-	else:
-		start_time = float(url_start_time.group()[3:])
-		end_time = start_time + duration
-		print(f'start time: {str(datetime.timedelta(seconds=start_time))}\nduration: {str(duration)}\nend time: {str(end_time)}')
-		FFMPEG_OPTIONS = {
-			'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=start_time))} -accurate_seek',
-			'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))}'
-			# 'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))} -c copy -copyts'
-		}
+		# Join the channel that the member is connected to
+		channel = member.voice.channel
+		if voice and voice.is_connected():
+			await voice.move_to(channel)
+		else:
+			voice = await channel.connect()
 
-	# await bot.loop.run_in_executor(None, playAudio, voice, source, FFMPEG_OPTIONS, duration)
-	# await playAudio(voice, source, FFMPEG_OPTIONS, duration)
+		# Options for FFmpeg
+		url_start_time = re.search(r"\?t=\d+", query)
 
-	# # Play audio from youtube video
-	videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback') # TODO: check if method fallback helps
-	
-	# TODO test out create_task() instead of run_in_executor
-	await bot.loop.run_in_executor(None, playAudio, voice, videoSource, duration) 
-	# videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS)
-	# # voice.is_playing()
-	# voice.stop() # TODO check if better
-	# voice.play(videoSource)
+		if (url_start_time is None):
+			FFMPEG_OPTIONS = {
+				'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+				'options': '-vn'
+			}
+		else:
+			start_time = float(url_start_time.group()[3:])
+			end_time = start_time + duration
+			print(f'start time: {str(datetime.timedelta(seconds=start_time))}\nduration: {str(duration)}\nend time: {str(end_time)}')
+			FFMPEG_OPTIONS = {
+				'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=start_time))} -accurate_seek',
+				'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))}'
+			}
 
-	# # Play for constant amount of time (seconds)
-	# await asyncio.sleep(duration)
+		# Play audio from youtube video
+		videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback')
 
-	# voice.stop()
-	
-	# # Disconnect from current voice channel
-	# await bot.loop.run_in_executor(None, voice.disconnect)
-	await voice.disconnect()
+		await bot.loop.run_in_executor(None, playAudio, voice, videoSource, duration)
+
+		await voice.disconnect()
+
+	except Exception as e:
+		print(f'Error playing audio for {member.name}: {e}')
+		# Ensure we disconnect if connected
+		voice = dget(bot.voice_clients, guild=member.guild)
+		if voice and voice.is_connected():
+			try:
+				await voice.disconnect()
+			except Exception:
+				pass
 
 # Direct messaging for logging
 # @to_thread
@@ -317,7 +317,7 @@ async def change_theme_user(interaction: discord.Interaction, user: typing.Union
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
 		video, source = search(song)
-		url_start_time = re.search("\?t=\d+", song)
+		url_start_time = re.search(r"\?t=\d+", song)
 		if (url_start_time is None):
 			start_time = 0.0
 		else:
@@ -347,7 +347,7 @@ async def change_outro_user(interaction: discord.Interaction, user: typing.Union
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
 		video, source = search(song)
-		url_start_time = re.search("\?t=\d+", song)
+		url_start_time = re.search(r"\?t=\d+", song)
 		if (url_start_time is None):
 			start_time = 0.0
 		else:
