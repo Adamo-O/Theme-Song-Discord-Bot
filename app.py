@@ -103,14 +103,8 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # -------------------------------------------
 # Helper methods
 # -------------------------------------------
-# Convert YouTube URL to Invidious URL to bypass datacenter IP blocks
-def convert_to_invidious(url: str) -> str:
-	invidious_instances = [
-		'https://inv.nadeko.net',
-		'https://invidious.nerdvpn.de',
-		'https://invidious.jing.rocks',
-	]
-	# Extract video ID from various YouTube URL formats
+# Extract video ID from YouTube URL
+def extract_video_id(url: str) -> str:
 	video_id = None
 	if 'youtu.be/' in url:
 		video_id = url.split('youtu.be/')[-1].split('?')[0]
@@ -120,40 +114,56 @@ def convert_to_invidious(url: str) -> str:
 			video_id = match.group(1)
 	elif 'youtube.com/shorts/' in url:
 		video_id = url.split('shorts/')[-1].split('?')[0]
-
-	if video_id:
-		return f'{invidious_instances[0]}/watch?v={video_id}'
-	return url
+	return video_id
 
 # Search YoutubeDL for query/url and returns (info, url)
 def search(query: str):
 	print(f'YDL_OPTIONS: {YDL_OPTIONS}')
 
-	# Try Invidious first for YouTube URLs
+	# For YouTube URLs, try multiple frontends to bypass IP blocks
 	original_query = query
+	video_id = None
 	if 'youtube.com' in query or 'youtu.be' in query:
-		query = convert_to_invidious(query)
-		print(f'Converted to Invidious: {query}')
+		video_id = extract_video_id(query)
+
+	# List of URLs to try (original YouTube + alternative frontends)
+	urls_to_try = []
+	if video_id:
+		urls_to_try = [
+			f'https://piped.video/watch?v={video_id}',
+			f'https://pipedapi.kavin.rocks/streams/{video_id}',
+			f'https://invidious.protokolla.fi/watch?v={video_id}',
+			query,  # Original YouTube URL as fallback
+		]
+	else:
+		urls_to_try = [query]
 
 	with YoutubeDL(YDL_OPTIONS) as ydl:
-		try:
-			# Check if query is a URL
-			requests.get(query)
-			info = ydl.extract_info(query, download=False)
-		except requests.exceptions.RequestException:
-			# Not a URL, search for it
+		# Try each URL until one works
+		for try_url in urls_to_try:
 			try:
-				info = ydl.extract_info(f"ytsearch:{original_query}", download=False)
-				if 'entries' in info and info['entries']:
-					info = info['entries'][0]
+				print(f'Trying: {try_url}')
+				# Check if it's a URL
+				try:
+					requests.get(try_url, timeout=5)
+				except requests.exceptions.RequestException:
+					# Not a URL, search for it
+					info = ydl.extract_info(f"ytsearch:{original_query}", download=False)
+					if 'entries' in info and info['entries']:
+						info = info['entries'][0]
+					else:
+						print(f'No search results for: {original_query}')
+						return (None, None)
 				else:
-					print(f'No search results for: {original_query}')
-					return (None, None)
+					info = ydl.extract_info(try_url, download=False)
+				# If we got here, extraction succeeded
+				break
 			except Exception as e:
-				print(f'yt-dlp search error: {e}')
-				return (None, None)
-		except Exception as e:
-			print(f'yt-dlp extraction error: {e}')
+				print(f'Failed {try_url}: {e}')
+				continue
+		else:
+			# All URLs failed
+			print(f'All extraction attempts failed for: {original_query}')
 			return (None, None)
 
 		# Get the best audio URL - prefer opus but accept any audio format
