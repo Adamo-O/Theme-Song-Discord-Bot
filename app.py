@@ -403,7 +403,7 @@ async def change_outro_user(interaction: discord.Interaction, user: typing.Union
 @bot.event
 async def on_ready():
 	print(f'Logged in as {bot.user}')
-	await bot.change_presence(activity = discord.Activity(type=discord.ActivityType.listening, name=f'{len(bot.guilds)} servers'))
+	await bot.change_presence(activity = discord.Activity(type=discord.ActivityType.listening, name=f'Back online! | /help'))
 	await send_message_to_user(f'Logged in as {bot.user}')
 
 cooldown_voice_join_v2 = commands.CooldownMapping.from_cooldown(1, 60.0, commands.BucketType.guild)
