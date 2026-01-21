@@ -42,23 +42,25 @@ youtube_cookies = os.environ.get('YOUTUBE_COOKIES')
 if youtube_cookies:
 	with open('cookies.txt', 'w') as f:
 		f.write(youtube_cookies)
-	print('YouTube cookies loaded from environment variable')
+	print('YouTube cookies loaded from environment variable', flush=True)
+else:
+	print('WARNING: YOUTUBE_COOKIES environment variable not set', flush=True)
 
 # Check for required binaries
 node_path = shutil.which('node')
 if node_path:
 	result = subprocess.run(['node', '--version'], capture_output=True, text=True)
-	print(f'Node.js found: {node_path} ({result.stdout.strip()})')
+	print(f'Node.js found: {node_path} ({result.stdout.strip()})', flush=True)
 else:
-	print('WARNING: Node.js not found - yt-dlp may fail to extract YouTube audio')
+	print('WARNING: Node.js not found - yt-dlp may fail to extract YouTube audio', flush=True)
 
 ffmpeg_path = shutil.which('ffmpeg')
 if ffmpeg_path:
 	result = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True)
 	version_line = result.stdout.split('\n')[0] if result.stdout else 'unknown'
-	print(f'FFmpeg found: {ffmpeg_path} ({version_line})')
+	print(f'FFmpeg found: {ffmpeg_path} ({version_line})', flush=True)
 else:
-	print('WARNING: FFmpeg not found - audio playback will fail')
+	print('WARNING: FFmpeg not found - audio playback will fail', flush=True)
 
 users = client.theme_songsDB.userData
 
@@ -141,12 +143,12 @@ def search(query: str):
 				if 'entries' in info and info['entries']:
 					info = info['entries'][0]
 				else:
-					print(f'No search results for: {query}')
+					print(f'No search results for: {query}', flush=True)
 					return (None, None)
 			else:
 				info = ydl.extract_info(query, download=False)
 		except Exception as e:
-			print(f'yt-dlp extraction error: {e}')
+			print(f'yt-dlp extraction error: {e}', flush=True)
 			return (None, None)
 
 		# Get the best audio URL - prefer opus but accept any audio format
@@ -159,9 +161,9 @@ def search(query: str):
 						break  # Prefer opus if available
 
 		if url:
-			print(f'Found audio URL for: {query}')
+			print(f'Found audio URL for: {query}', flush=True)
 		else:
-			print(f'Could not find audio URL for: {query}')
+			print(f'Could not find audio URL for: {query}', flush=True)
 
 	return (info, url)
 
@@ -279,7 +281,7 @@ async def play(member: discord.Member, query: str, duration: float):
 		# Search for audio on youtube
 		video, source = search(query)
 		if video is None or source is None:
-			print(f'Failed to get audio for {member.name}: {query}')
+			print(f'Failed to get audio for {member.name}: {query}', flush=True)
 			return
 
 		voice: discord.VoiceClient = dget(bot.voice_clients, guild=member.guild)
@@ -316,7 +318,7 @@ async def play(member: discord.Member, query: str, duration: float):
 		await voice.disconnect()
 
 	except Exception as e:
-		print(f'Error playing audio for {member.name}: {e}')
+		print(f'Error playing audio for {member.name}: {e}', flush=True)
 		# Ensure we disconnect if connected
 		voice = dget(bot.voice_clients, guild=member.guild)
 		if voice and voice.is_connected():
@@ -434,7 +436,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 		# if ratelimit:
 		# 	return
 
-		print(f'{str(member.name)} has joined voice channel {member.voice.channel.name} in server: {member.guild.name}')
+		print(f'{str(member.name)} has joined voice channel {member.voice.channel.name} in server: {member.guild.name}', flush=True)
 		url = get_member_theme_song(member)
 		if url is not None:
 			await play(member, url, get_member_song_duration(member))
