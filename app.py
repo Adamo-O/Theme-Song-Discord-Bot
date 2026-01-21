@@ -346,29 +346,36 @@ async def change_theme_user(interaction: discord.Interaction, user: typing.Union
 	if 'shorts' in song and 'http' in song:
 		song = convert_yt_short(song)
 
-	set_member_theme_song(user, song)
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
 		await interaction.followup.send(f'💢 Song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+		return
+
+	# Search for the video first to validate it exists
+	video, source = search(song)
+	if video is None or source is None:
+		await interaction.followup.send(f'❌ Could not find video: {song}', ephemeral=True)
+		return
+
+	# If video duration is shorter than theme song duration, set it to video duration
+	url_start_time = re.search(r"\?t=\d+", song)
+	if (url_start_time is None):
+		start_time = 0.0
 	else:
-		# If video duration is shorter than theme song duration, set it to video duration
-		video, source = search(song)
-		url_start_time = re.search(r"\?t=\d+", song)
-		if (url_start_time is None):
-			start_time = 0.0
-		else:
-			start_time = float(url_start_time.group()[3:])
+		start_time = float(url_start_time.group()[3:])
 
-		video_duration = video['duration']
-		if theme_song_duration > float(video_duration):
-			theme_song_duration = float(video_duration)
-		elif start_time + theme_song_duration > float(video_duration):
-			theme_song_duration = float(video_duration) - start_time
+	video_duration = video['duration']
+	if theme_song_duration > float(video_duration):
+		theme_song_duration = float(video_duration)
+	elif start_time + theme_song_duration > float(video_duration):
+		theme_song_duration = float(video_duration) - start_time
 
-		if set_member_song_duration(user, theme_song_duration):
-			username = "Your" if interaction.user.id == user.id else f'{user.display_name}\'s'
-			await interaction.followup.send(f'✅ {username} theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
-		else:
-			await interaction.followup.send('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
+	# Only save to database after validation passes
+	set_member_theme_song(user, song)
+	if set_member_song_duration(user, theme_song_duration):
+		username = "Your" if interaction.user.id == user.id else f'{user.display_name}\'s'
+		await interaction.followup.send(f'✅ {username} theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+	else:
+		await interaction.followup.send('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
 
 async def change_outro_user(interaction: discord.Interaction, user: typing.Union[discord.User, discord.Member], song: str, outro_duration: float=default_theme_song_duration):
 	print(f'change outro theme triggered. Changing {user.name}\'s outro to {song} with duration {str(outro_duration)}')
@@ -380,29 +387,36 @@ async def change_outro_user(interaction: discord.Interaction, user: typing.Union
 	if 'shorts' in song and 'http' in song:
 		song = convert_yt_short(song)
 
-	set_outro_song(user, song)
 	if float(outro_duration) < min_theme_song_duration or float(outro_duration) > max_theme_song_duration:
 		await interaction.followup.send(f'💢 Outro duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+		return
+
+	# Search for the video first to validate it exists
+	video, source = search(song)
+	if video is None or source is None:
+		await interaction.followup.send(f'❌ Could not find video: {song}', ephemeral=True)
+		return
+
+	# If video duration is shorter than outro duration, set it to video duration
+	url_start_time = re.search(r"\?t=\d+", song)
+	if (url_start_time is None):
+		start_time = 0.0
 	else:
-		# If video duration is shorter than theme song duration, set it to video duration
-		video, source = search(song)
-		url_start_time = re.search(r"\?t=\d+", song)
-		if (url_start_time is None):
-			start_time = 0.0
-		else:
-			start_time = float(url_start_time.group()[3:])
+		start_time = float(url_start_time.group()[3:])
 
-		video_duration = video['duration']
-		if outro_duration > float(video_duration):
-			outro_duration = float(video_duration)
-		elif start_time + outro_duration > float(video_duration):
-			outro_duration = float(video_duration) - start_time
+	video_duration = video['duration']
+	if outro_duration > float(video_duration):
+		outro_duration = float(video_duration)
+	elif start_time + outro_duration > float(video_duration):
+		outro_duration = float(video_duration) - start_time
 
-		if set_outro_duration(user, outro_duration):
-			username = "Your" if interaction.user.id == user.id else f'{user.display_name}\'s'
-			await interaction.followup.send(f'✅ {username} outro is now {song}.\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
-		else:
-			await interaction.followup.send('❌ Duration not set. Cannot set a duration without an outro.', ephemeral=True)
+	# Only save to database after validation passes
+	set_outro_song(user, song)
+	if set_outro_duration(user, outro_duration):
+		username = "Your" if interaction.user.id == user.id else f'{user.display_name}\'s'
+		await interaction.followup.send(f'✅ {username} outro is now {song}.\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
+	else:
+		await interaction.followup.send('❌ Duration not set. Cannot set a duration without an outro.', ephemeral=True)
 
 # -------------------------------------------
 # Events
