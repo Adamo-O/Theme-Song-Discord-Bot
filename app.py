@@ -44,13 +44,21 @@ if youtube_cookies:
 		f.write(youtube_cookies)
 	print('YouTube cookies loaded from environment variable')
 
-# Check for Node.js (required by yt-dlp for YouTube)
+# Check for required binaries
 node_path = shutil.which('node')
 if node_path:
 	result = subprocess.run(['node', '--version'], capture_output=True, text=True)
 	print(f'Node.js found: {node_path} ({result.stdout.strip()})')
 else:
 	print('WARNING: Node.js not found - yt-dlp may fail to extract YouTube audio')
+
+ffmpeg_path = shutil.which('ffmpeg')
+if ffmpeg_path:
+	result = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True)
+	version_line = result.stdout.split('\n')[0] if result.stdout else 'unknown'
+	print(f'FFmpeg found: {ffmpeg_path} ({version_line})')
+else:
+	print('WARNING: FFmpeg not found - audio playback will fail')
 
 users = client.theme_songsDB.userData
 
@@ -65,7 +73,7 @@ YDL_OPTIONS = {
 	'quiet': True,
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
-	'js_runtimes': {'nodejs': {}},
+	'js_runtimes': {'node': {}},
 } 
 
 # Default theme song duration variables
