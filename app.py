@@ -44,6 +44,7 @@ YDL_OPTIONS = {
 	'skip_download': True,
 	'quiet': True,
 	'no_warnings': False,
+	'extractor_args': {'youtube': {'js_runtimes': ['nodejs']}},
 } 
 
 # Default theme song duration variables
