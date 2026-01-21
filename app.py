@@ -44,7 +44,12 @@ YDL_OPTIONS = {
 	'skip_download': True,
 	'quiet': True,
 	'no_warnings': False,  # Keep warnings for debugging
-	'extractor_args': {'youtube': {'player_client': ['android']}},
+	'extractor_args': {
+		'youtube': {
+			'player_client': ['android', 'web'],
+			'formats': ['missing_pot'],  # Force formats even without PO Token
+		}
+	},
 } 
 
 # Default theme song duration variables
