@@ -24,18 +24,6 @@ import time
 # load_dotenv()
 
 # -------------------------------------------
-# YouTube cookies from environment variable
-# -------------------------------------------
-# On Heroku, set YOUTUBE_COOKIES env var with the contents of cookies.txt
-youtube_cookies = os.environ.get('YOUTUBE_COOKIES')
-if youtube_cookies:
-	with open('cookies.txt', 'w') as f:
-		f.write(youtube_cookies)
-	print(f'Wrote cookies.txt from YOUTUBE_COOKIES env var ({len(youtube_cookies)} chars)')
-else:
-	print('WARNING: YOUTUBE_COOKIES env var not set')
-
-# -------------------------------------------
 # MongoDB and Heroku connections
 # -------------------------------------------
 
@@ -53,10 +41,10 @@ users = client.theme_songsDB.userData
 YDL_OPTIONS = {
 	'format': 'bestaudio/best',  # Fallback to best if no audio-only
 	'noplaylist': True,
-	'cookiefile': 'cookies.txt',
 	'skip_download': True,
 	'quiet': True,
 	'no_warnings': False,  # Keep warnings for debugging
+	'extractor_args': {'youtube': {'player_client': ['android']}},
 } 
 
 # Default theme song duration variables
