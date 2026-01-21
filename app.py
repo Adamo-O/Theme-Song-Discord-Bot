@@ -338,13 +338,17 @@ async def send_message_to_user(message: str, user_id: int=default_log_user):
 
 async def change_theme_user(interaction: discord.Interaction, user: typing.Union[discord.User, discord.Member], song: str, theme_song_duration: float=default_theme_song_duration):
 	print(f'change_theme triggered. Changing {user.name}\'s theme song to {song} with duration {str(theme_song_duration)}')
+
+	# Defer the response immediately since yt-dlp extraction can take a while
+	await interaction.response.defer(ephemeral=True)
+
 	# If song link is a youtube short, convert to correct youtube link
 	if 'shorts' in song and 'http' in song:
 		song = convert_yt_short(song)
 
 	set_member_theme_song(user, song)
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
-		await interaction.response.send_message(f'💢 Song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+		await interaction.followup.send(f'💢 Song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
 		video, source = search(song)
@@ -359,22 +363,26 @@ async def change_theme_user(interaction: discord.Interaction, user: typing.Union
 			theme_song_duration = float(video_duration)
 		elif start_time + theme_song_duration > float(video_duration):
 			theme_song_duration = float(video_duration) - start_time
-		
+
 		if set_member_song_duration(user, theme_song_duration):
 			username = "Your" if interaction.user.id == user.id else f'{user.display_name}\'s'
-			await interaction.response.send_message(f'✅ {username} theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+			await interaction.followup.send(f'✅ {username} theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
 		else:
-			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
+			await interaction.followup.send('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
 
 async def change_outro_user(interaction: discord.Interaction, user: typing.Union[discord.User, discord.Member], song: str, outro_duration: float=default_theme_song_duration):
 	print(f'change outro theme triggered. Changing {user.name}\'s outro to {song} with duration {str(outro_duration)}')
+
+	# Defer the response immediately since yt-dlp extraction can take a while
+	await interaction.response.defer(ephemeral=True)
+
 	# If song link is a youtube short, convert to correct youtube link
 	if 'shorts' in song and 'http' in song:
 		song = convert_yt_short(song)
 
 	set_outro_song(user, song)
 	if float(outro_duration) < min_theme_song_duration or float(outro_duration) > max_theme_song_duration:
-		await interaction.response.send_message(f'💢 Outro duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+		await interaction.followup.send(f'💢 Outro duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
 		# If video duration is shorter than theme song duration, set it to video duration
 		video, source = search(song)
@@ -389,12 +397,12 @@ async def change_outro_user(interaction: discord.Interaction, user: typing.Union
 			outro_duration = float(video_duration)
 		elif start_time + outro_duration > float(video_duration):
 			outro_duration = float(video_duration) - start_time
-		
+
 		if set_outro_duration(user, outro_duration):
 			username = "Your" if interaction.user.id == user.id else f'{user.display_name}\'s'
-			await interaction.response.send_message(f'✅ {username} outro is now {song}.\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
+			await interaction.followup.send(f'✅ {username} outro is now {song}.\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
 		else:
-			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without an outro.', ephemeral=True)
+			await interaction.followup.send('❌ Duration not set. Cannot set a duration without an outro.', ephemeral=True)
 
 # -------------------------------------------
 # Events
