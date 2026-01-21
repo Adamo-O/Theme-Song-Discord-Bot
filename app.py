@@ -74,6 +74,7 @@ YDL_OPTIONS = {
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
 	'js_runtimes': {'node': {}},
+	'remote_components': {'ejs': 'github'},
 } 
 
 # Default theme song duration variables
