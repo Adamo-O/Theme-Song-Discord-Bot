@@ -22,6 +22,17 @@ import time
 
 # from dotenv import load_dotenv
 # load_dotenv()
+
+# -------------------------------------------
+# YouTube cookies from environment variable
+# -------------------------------------------
+# On Heroku, set YOUTUBE_COOKIES env var with the contents of cookies.txt
+youtube_cookies = os.environ.get('YOUTUBE_COOKIES')
+if youtube_cookies:
+	with open('cookies.txt', 'w') as f:
+		f.write(youtube_cookies)
+	print('Wrote cookies.txt from YOUTUBE_COOKIES env var')
+
 # -------------------------------------------
 # MongoDB and Heroku connections
 # -------------------------------------------
