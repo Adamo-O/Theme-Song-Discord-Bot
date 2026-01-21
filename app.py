@@ -19,6 +19,8 @@ from yt_dlp import YoutubeDL
 import functools
 import typing
 import time
+import shutil
+import subprocess
 
 # from dotenv import load_dotenv
 # load_dotenv()
@@ -42,6 +44,14 @@ if youtube_cookies:
 		f.write(youtube_cookies)
 	print('YouTube cookies loaded from environment variable')
 
+# Check for Node.js (required by yt-dlp for YouTube)
+node_path = shutil.which('node')
+if node_path:
+	result = subprocess.run(['node', '--version'], capture_output=True, text=True)
+	print(f'Node.js found: {node_path} ({result.stdout.strip()})')
+else:
+	print('WARNING: Node.js not found - yt-dlp may fail to extract YouTube audio')
+
 users = client.theme_songsDB.userData
 
 # -------------------------------------------
@@ -55,6 +65,7 @@ YDL_OPTIONS = {
 	'quiet': True,
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
+	'js_runtimes': 'nodejs',
 } 
 
 # Default theme song duration variables

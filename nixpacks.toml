@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["ffmpeg", "libopus", "nodejs"]
+nixPkgs = ["ffmpeg", "libopus", "nodejs_20"]
 
 [start]
 cmd = "python app.py"
