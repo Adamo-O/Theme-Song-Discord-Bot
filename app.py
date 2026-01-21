@@ -100,6 +100,7 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # -------------------------------------------
 # Search YoutubeDL for query/url and returns (info, url)
 def search(query: str):
+	print(f'YDL_OPTIONS: {YDL_OPTIONS}')
 	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try:
 			# Check if query is a URL
