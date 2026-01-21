@@ -103,9 +103,38 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # -------------------------------------------
 # Helper methods
 # -------------------------------------------
+# Convert YouTube URL to Invidious URL to bypass datacenter IP blocks
+def convert_to_invidious(url: str) -> str:
+	invidious_instances = [
+		'https://inv.nadeko.net',
+		'https://invidious.nerdvpn.de',
+		'https://invidious.jing.rocks',
+	]
+	# Extract video ID from various YouTube URL formats
+	video_id = None
+	if 'youtu.be/' in url:
+		video_id = url.split('youtu.be/')[-1].split('?')[0]
+	elif 'youtube.com/watch' in url:
+		match = re.search(r'[?&]v=([^&]+)', url)
+		if match:
+			video_id = match.group(1)
+	elif 'youtube.com/shorts/' in url:
+		video_id = url.split('shorts/')[-1].split('?')[0]
+
+	if video_id:
+		return f'{invidious_instances[0]}/watch?v={video_id}'
+	return url
+
 # Search YoutubeDL for query/url and returns (info, url)
 def search(query: str):
 	print(f'YDL_OPTIONS: {YDL_OPTIONS}')
+
+	# Try Invidious first for YouTube URLs
+	original_query = query
+	if 'youtube.com' in query or 'youtu.be' in query:
+		query = convert_to_invidious(query)
+		print(f'Converted to Invidious: {query}')
+
 	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try:
 			# Check if query is a URL
@@ -114,11 +143,11 @@ def search(query: str):
 		except requests.exceptions.RequestException:
 			# Not a URL, search for it
 			try:
-				info = ydl.extract_info(f"ytsearch:{query}", download=False)
+				info = ydl.extract_info(f"ytsearch:{original_query}", download=False)
 				if 'entries' in info and info['entries']:
 					info = info['entries'][0]
 				else:
-					print(f'No search results for: {query}')
+					print(f'No search results for: {original_query}')
 					return (None, None)
 			except Exception as e:
 				print(f'yt-dlp search error: {e}')
