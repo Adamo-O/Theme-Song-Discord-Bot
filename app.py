@@ -116,36 +116,38 @@ def extract_video_id(url: str) -> str:
 		video_id = url.split('shorts/')[-1].split('?')[0]
 	return video_id
 
-# Try to get audio URL using Cobalt API
+# Try to get audio URL using Cobalt API (v10+)
 def try_cobalt_api(video_id: str):
 	cobalt_instances = [
+		'https://cobalt-api.ayo.tf',
 		'https://api.cobalt.tools',
-		'https://cobalt-api.kwiatekmiki.com',
 	]
 	for instance in cobalt_instances:
 		try:
 			print(f'Trying Cobalt: {instance}')
 			response = requests.post(
-				f'{instance}/api/json',
+				instance,  # POST to root endpoint
 				json={
 					'url': f'https://www.youtube.com/watch?v={video_id}',
-					'isAudioOnly': True,
-					'aFormat': 'opus',
+					'downloadMode': 'audio',
+					'audioFormat': 'opus',
 				},
 				headers={
 					'Accept': 'application/json',
 					'Content-Type': 'application/json',
 				},
-				timeout=10
+				timeout=15
 			)
+			print(f'Cobalt response: {response.status_code}')
 			if response.status_code == 200:
 				data = response.json()
-				if data.get('status') == 'stream' or data.get('status') == 'redirect':
-					audio_url = data.get('url')
-					if audio_url:
-						print(f'Cobalt success: got audio URL')
-						return {'url': audio_url, 'duration': 0, 'title': video_id}, audio_url
-			print(f'Cobalt {instance} failed: {response.status_code} {response.text[:100]}')
+				print(f'Cobalt data: {data}')
+				# v10 returns 'url' directly for redirect, or 'audio' for stream
+				audio_url = data.get('url') or data.get('audio')
+				if audio_url:
+					print(f'Cobalt success: got audio URL')
+					return {'url': audio_url, 'duration': 0, 'title': video_id}, audio_url
+			print(f'Cobalt {instance} failed: {response.status_code} {response.text[:200]}')
 		except Exception as e:
 			print(f'Cobalt {instance} error: {e}')
 	return None, None
