@@ -116,54 +116,69 @@ def extract_video_id(url: str) -> str:
 		video_id = url.split('shorts/')[-1].split('?')[0]
 	return video_id
 
+# Try to get audio URL using Cobalt API
+def try_cobalt_api(video_id: str):
+	cobalt_instances = [
+		'https://api.cobalt.tools',
+		'https://cobalt-api.kwiatekmiki.com',
+	]
+	for instance in cobalt_instances:
+		try:
+			print(f'Trying Cobalt: {instance}')
+			response = requests.post(
+				f'{instance}/api/json',
+				json={
+					'url': f'https://www.youtube.com/watch?v={video_id}',
+					'isAudioOnly': True,
+					'aFormat': 'opus',
+				},
+				headers={
+					'Accept': 'application/json',
+					'Content-Type': 'application/json',
+				},
+				timeout=10
+			)
+			if response.status_code == 200:
+				data = response.json()
+				if data.get('status') == 'stream' or data.get('status') == 'redirect':
+					audio_url = data.get('url')
+					if audio_url:
+						print(f'Cobalt success: got audio URL')
+						return {'url': audio_url, 'duration': 0, 'title': video_id}, audio_url
+			print(f'Cobalt {instance} failed: {response.status_code} {response.text[:100]}')
+		except Exception as e:
+			print(f'Cobalt {instance} error: {e}')
+	return None, None
+
 # Search YoutubeDL for query/url and returns (info, url)
 def search(query: str):
-	print(f'YDL_OPTIONS: {YDL_OPTIONS}')
-
-	# For YouTube URLs, try multiple frontends to bypass IP blocks
-	original_query = query
-	video_id = None
+	# For YouTube URLs, try Cobalt API first (bypasses IP blocks)
 	if 'youtube.com' in query or 'youtu.be' in query:
 		video_id = extract_video_id(query)
+		if video_id:
+			info, url = try_cobalt_api(video_id)
+			if url:
+				return (info, url)
+			print('Cobalt failed, trying yt-dlp...')
 
-	# List of URLs to try (original YouTube + alternative frontends)
-	urls_to_try = []
-	if video_id:
-		urls_to_try = [
-			f'https://piped.video/watch?v={video_id}',
-			f'https://pipedapi.kavin.rocks/streams/{video_id}',
-			f'https://invidious.protokolla.fi/watch?v={video_id}',
-			query,  # Original YouTube URL as fallback
-		]
-	else:
-		urls_to_try = [query]
-
+	# Fall back to yt-dlp
 	with YoutubeDL(YDL_OPTIONS) as ydl:
-		# Try each URL until one works
-		for try_url in urls_to_try:
+		try:
+			# Check if query is a URL
 			try:
-				print(f'Trying: {try_url}')
-				# Check if it's a URL
-				try:
-					requests.get(try_url, timeout=5)
-				except requests.exceptions.RequestException:
-					# Not a URL, search for it
-					info = ydl.extract_info(f"ytsearch:{original_query}", download=False)
-					if 'entries' in info and info['entries']:
-						info = info['entries'][0]
-					else:
-						print(f'No search results for: {original_query}')
-						return (None, None)
+				requests.get(query, timeout=5)
+			except requests.exceptions.RequestException:
+				# Not a URL, search for it
+				info = ydl.extract_info(f"ytsearch:{query}", download=False)
+				if 'entries' in info and info['entries']:
+					info = info['entries'][0]
 				else:
-					info = ydl.extract_info(try_url, download=False)
-				# If we got here, extraction succeeded
-				break
-			except Exception as e:
-				print(f'Failed {try_url}: {e}')
-				continue
-		else:
-			# All URLs failed
-			print(f'All extraction attempts failed for: {original_query}')
+					print(f'No search results for: {query}')
+					return (None, None)
+			else:
+				info = ydl.extract_info(query, download=False)
+		except Exception as e:
+			print(f'yt-dlp extraction error: {e}')
 			return (None, None)
 
 		# Get the best audio URL - prefer opus but accept any audio format
