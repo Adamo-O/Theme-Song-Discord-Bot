@@ -31,7 +31,9 @@ youtube_cookies = os.environ.get('YOUTUBE_COOKIES')
 if youtube_cookies:
 	with open('cookies.txt', 'w') as f:
 		f.write(youtube_cookies)
-	print('Wrote cookies.txt from YOUTUBE_COOKIES env var')
+	print(f'Wrote cookies.txt from YOUTUBE_COOKIES env var ({len(youtube_cookies)} chars)')
+else:
+	print('WARNING: YOUTUBE_COOKIES env var not set')
 
 # -------------------------------------------
 # MongoDB and Heroku connections
