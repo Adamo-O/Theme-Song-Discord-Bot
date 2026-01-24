@@ -130,7 +130,7 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # -------------------------------------------
 # Helper methods
 # -------------------------------------------
-# Search YoutubeDL for query/url and returns (info, url)
+# Search YoutubeDL for query/url and returns (info, url, http_headers)
 def search(query: str):
 	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try:
@@ -144,19 +144,21 @@ def search(query: str):
 					info = info['entries'][0]
 				else:
 					print(f'No search results for: {query}', flush=True)
-					return (None, None)
+					return (None, None, None)
 			else:
 				info = ydl.extract_info(query, download=False)
 		except Exception as e:
 			print(f'yt-dlp extraction error: {e}', flush=True)
-			return (None, None)
+			return (None, None, None)
 
 		# Get the best audio URL - prefer opus but accept any audio format
 		url = info.get('url')
+		http_headers = info.get('http_headers', {})
 		if not url:
 			for fmt in info.get('formats', []):
 				if fmt.get('acodec') and fmt.get('acodec') != 'none':
 					url = fmt.get('url')
+					http_headers = fmt.get('http_headers', http_headers)
 					if fmt.get('acodec') == 'opus':
 						break  # Prefer opus if available
 
@@ -165,7 +167,7 @@ def search(query: str):
 		else:
 			print(f'Could not find audio URL for: {query}', flush=True)
 
-	return (info, url)
+	return (info, url, http_headers)
 
 # Gets theme song of given member from database
 def get_member_theme_song(member: discord.Member):
@@ -279,7 +281,7 @@ async def play(member: discord.Member, query: str, duration: float):
 
 	try:
 		# Search for audio on youtube
-		video, source = search(query)
+		video, source, http_headers = search(query)
 		if video is None or source is None:
 			print(f'Failed to get audio for {member.name}: {query}', flush=True)
 			return
@@ -293,12 +295,17 @@ async def play(member: discord.Member, query: str, duration: float):
 		else:
 			voice = await channel.connect()
 
+		# Build HTTP headers string for FFmpeg
+		headers_str = ''
+		if http_headers:
+			headers_str = ''.join(f'{k}: {v}\r\n' for k, v in http_headers.items())
+
 		# Options for FFmpeg
 		url_start_time = re.search(r"\?t=\d+", query)
 
 		if (url_start_time is None):
 			FFMPEG_OPTIONS = {
-				'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+				'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -headers "{headers_str}"',
 				'options': '-vn'
 			}
 		else:
@@ -306,7 +313,7 @@ async def play(member: discord.Member, query: str, duration: float):
 			end_time = start_time + duration
 			print(f'start time: {str(datetime.timedelta(seconds=start_time))}\nduration: {str(duration)}\nend time: {str(end_time)}')
 			FFMPEG_OPTIONS = {
-				'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -ss {str(datetime.timedelta(seconds=start_time))} -accurate_seek',
+				'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -headers "{headers_str}" -ss {str(datetime.timedelta(seconds=start_time))} -accurate_seek',
 				'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))}'
 			}
 
@@ -351,7 +358,7 @@ async def change_theme_user(interaction: discord.Interaction, user: typing.Union
 		return
 
 	# Search for the video first to validate it exists
-	video, source = search(song)
+	video, source, _ = search(song)
 	if video is None or source is None:
 		await interaction.followup.send(f'❌ Could not find video: {song}', ephemeral=True)
 		return
@@ -392,7 +399,7 @@ async def change_outro_user(interaction: discord.Interaction, user: typing.Union
 		return
 
 	# Search for the video first to validate it exists
-	video, source = search(song)
+	video, source, _ = search(song)
 	if video is None or source is None:
 		await interaction.followup.send(f'❌ Could not find video: {song}', ephemeral=True)
 		return
