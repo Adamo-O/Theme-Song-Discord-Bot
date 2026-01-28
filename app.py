@@ -5,6 +5,7 @@ import os
 import requests
 import re
 import datetime
+import random
 
 from pymongo.mongo_client import MongoClient
 from discord import FFmpegOpusAudio
@@ -214,6 +215,33 @@ def get_member_outro_duration(member: discord.Member):
 	# User duration not found, set their duration to default
 	users.update_one({"_id": str(member.id)}, { "$set": {"outro_duration": str(default_theme_song_duration)} }, upsert=True)
 	return default_theme_song_duration
+
+# DB CHANGE NEEDED: add theme_song_cycle array field to user documents.
+def get_member_song_cycle(member: discord.Member):
+	member_obj = users.find_one({"_id": str(member.id), "theme_song_cycle": { "$exists": True }})
+	if member_obj:
+		print(f'Song cycle of member {member.name} found in database.')
+		return member_obj.get("theme_song_cycle", [])
+	print(f'Could not find member song cycle for {member.name}.')
+	return []
+
+def add_to_cycle(member: discord.Member, url: str, duration: float, title: str):
+	song_obj = {"url": str(url), "duration": float(duration), "title": str(title)}
+	users.update_one({"_id": str(member.id)}, { "$push": {"theme_song_cycle": song_obj} }, upsert=True)
+	return song_obj
+
+def remove_from_cycle(member: discord.Member, index: int):
+	song_cycle = get_member_song_cycle(member)
+	if not song_cycle:
+		return None
+	if index < 0 or index >= len(song_cycle):
+		return None
+	removed_song = song_cycle.pop(index)
+	users.update_one({"_id": str(member.id)}, { "$set": {"theme_song_cycle": song_cycle} }, upsert=True)
+	return removed_song
+
+def clear_cycle(member: discord.Member):
+	users.update_one({"_id": str(member.id)}, { "$unset": {"theme_song_cycle": ""} }, upsert=True)
 
 # Adds or changes member's theme song in database
 def set_member_theme_song(member: discord.Member, new_theme: str):
@@ -466,6 +494,15 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 		# 	return
 
 		print(f'{str(member.name)} has joined voice channel {member.voice.channel.name} in server: {member.guild.name}', flush=True)
+		song_cycle = get_member_song_cycle(member)
+		if song_cycle:
+			selected = random.choice(song_cycle)
+			cycle_url = selected.get("url")
+			cycle_duration = selected.get("duration", default_theme_song_duration)
+			if cycle_url:
+				await play(member, cycle_url, float(cycle_duration))
+				return
+
 		url = get_member_theme_song(member)
 		if url is not None:
 			await play(member, url, get_member_song_duration(member))
@@ -574,6 +611,103 @@ async def change_outro_other(interaction: discord.Interaction, user: str, song: 
 		await interaction.response.send_message(f'Could not find user {user}.', ephemeral=True)
 	else:
 		await change_outro_user(interaction, member, song, outro_duration)
+
+@bot.tree.command(
+	name="add-to-cycle",
+	description="Add a song to user's theme song cycle."
+)
+@discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
+async def add_to_cycle_command(interaction: discord.Interaction, song: str, duration: float=default_theme_song_duration):
+	print(f'add_to_cycle triggered. Adding {interaction.user.name}\'s cycle song to {song} with duration {str(duration)}')
+
+	# Defer the response immediately since yt-dlp extraction can take a while
+	await interaction.response.defer(ephemeral=True)
+
+	# If song link is a youtube short, convert to correct youtube link
+	if 'shorts' in song and 'http' in song:
+		song = convert_yt_short(song)
+
+	if float(duration) < min_theme_song_duration or float(duration) > max_theme_song_duration:
+		await interaction.followup.send(f'💢 Song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+		return
+
+	# Search for the video first to validate it exists
+	video, source, _ = search(song)
+	if video is None or source is None:
+		await interaction.followup.send(f'❌ Could not find video: {song}', ephemeral=True)
+		return
+
+	# If video duration is shorter than theme song duration, set it to video duration
+	url_start_time = re.search(r"\?t=\d+", song)
+	if (url_start_time is None):
+		start_time = 0.0
+	else:
+		start_time = float(url_start_time.group()[3:])
+
+	video_duration = video['duration']
+	if duration > float(video_duration):
+		duration = float(video_duration)
+	elif start_time + duration > float(video_duration):
+		duration = float(video_duration) - start_time
+
+	title = video.get('title', 'Unknown title')
+	add_to_cycle(interaction.user, song, duration, title)
+	await interaction.followup.send(f'✅ Added to your cycle:\n🎵 {title}\n🔗 {song}\n⏱ It will play for {str(duration)} seconds.', ephemeral=True)
+
+@bot.tree.command(
+	name="cycle",
+	description="Print the user's theme song cycle."
+)
+@discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
+async def print_cycle(interaction: discord.Interaction):
+	print(f'cycle triggered with user: {interaction.user.name}')
+	song_cycle = get_member_song_cycle(interaction.user)
+	if not song_cycle:
+		await interaction.response.send_message('❌ Your cycle is empty. Use `/add-to-cycle` to add songs.', ephemeral=True)
+		return
+
+	lines = []
+	for index, song in enumerate(song_cycle, start=1):
+		title = song.get("title", "Unknown title")
+		url = song.get("url", "Unknown URL")
+		duration = song.get("duration", default_theme_song_duration)
+		lines.append(f'{index}. {title}\n🔗 {url}\n⏱ It will play for {str(duration)} seconds.')
+
+	await interaction.response.send_message(f'🎵 Your theme song cycle:\n\n' + '\n\n'.join(lines), ephemeral=True)
+
+@bot.tree.command(
+	name="remove-from-cycle",
+	description="Remove a song from user's theme song cycle."
+)
+@discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
+async def remove_from_cycle_command(interaction: discord.Interaction, index: int):
+	print(f'remove_from_cycle triggered with user: {interaction.user.name}')
+	song_cycle = get_member_song_cycle(interaction.user)
+	if not song_cycle:
+		await interaction.response.send_message('❌ Your cycle is empty.', ephemeral=True)
+		return
+	if index < 1 or index > len(song_cycle):
+		await interaction.response.send_message(f'❌ Invalid index. Use `/cycle` to view your list (1-{len(song_cycle)}).', ephemeral=True)
+		return
+
+	removed_song = remove_from_cycle(interaction.user, index - 1)
+	if removed_song:
+		title = removed_song.get("title", "Unknown title")
+		url = removed_song.get("url", "Unknown URL")
+		duration = removed_song.get("duration", default_theme_song_duration)
+		await interaction.response.send_message(f'✅ Removed from your cycle:\n🎵 {title}\n🔗 {url}\n⏱ It will play for {str(duration)} seconds.', ephemeral=True)
+	else:
+		await interaction.response.send_message('❌ Could not remove that index.', ephemeral=True)
+
+@bot.tree.command(
+	name="clear-cycle",
+	description="Clear the user's theme song cycle."
+)
+@discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
+async def clear_cycle_command(interaction: discord.Interaction):
+	print(f'clear_cycle triggered with user: {interaction.user.name}')
+	clear_cycle(interaction.user)
+	await interaction.response.send_message('🗑️ Your cycle has been cleared.', ephemeral=True)
 
 @bot.tree.command(
 	name="set-duration",
