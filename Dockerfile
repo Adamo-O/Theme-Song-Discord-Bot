@@ -1,11 +1,12 @@
 FROM python:3.12-slim
 
-# Install system dependencies
+# Install system dependencies (including build deps for PyNaCl)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libopus0 \
-    nodejs \
-    npm \
+    libffi-dev \
+    python3-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
