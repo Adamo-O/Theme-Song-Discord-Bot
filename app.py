@@ -76,6 +76,7 @@ YDL_OPTIONS = {
 	'quiet': True,
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
+	'extractor_args': {'youtube': {'player_client': ['tv']}},  # TV client doesn't require PO token
 	'js_runtimes': {'node': {}},
 	'remote_components': ['ejs:github'],
 } 
