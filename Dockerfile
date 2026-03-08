@@ -16,6 +16,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install yt-dlp POT provider plugin
+RUN pip install --no-cache-dir bgutil-ytdlp-pot-provider
+
 # Copy application code
 COPY . .
 

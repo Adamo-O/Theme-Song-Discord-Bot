@@ -68,6 +68,10 @@ users = client.theme_songsDB.userData
 # -------------------------------------------
 # Constants
 # -------------------------------------------
+# POT provider URL (for bypassing YouTube bot detection)
+pot_provider_url = os.environ.get('POT_PROVIDER_URL', 'http://127.0.0.1:4416')
+print(f'POT Provider URL: {pot_provider_url}', flush=True)
+
 # Options for YoutubeDL
 YDL_OPTIONS = {
 	'format': 'bestaudio/best',
@@ -76,7 +80,10 @@ YDL_OPTIONS = {
 	'quiet': True,
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
-	'extractor_args': {'youtube': {'player_client': ['tv']}},  # TV client doesn't require PO token
+	'extractor_args': {
+		'youtube': {'player_client': ['web']},  # Use web client with POT
+		'youtubepot-bgutilhttp': {'base_url': pot_provider_url},  # POT provider endpoint
+	},
 	'js_runtimes': {'node': {}},
 	'remote_components': ['ejs:github'],
 } 

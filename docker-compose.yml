@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  pot-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: pot-provider
+    restart: unless-stopped
+    ports:
+      - "4416:4416"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4416/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  theme-song-bot:
+    build: .
+    container_name: theme-song-bot
+    restart: unless-stopped
+    depends_on:
+      pot-provider:
+        condition: service_healthy
+    environment:
+      - POT_PROVIDER_URL=http://pot-provider:4416
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - MONGO_URI=${MONGO_URI}
+    # Pass any additional env vars from .env file
+    env_file:
+      - .env
