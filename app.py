@@ -77,8 +77,7 @@ YDL_OPTIONS = {
 	'format': 'bestaudio[acodec=opus]/bestaudio[acodec=aac]/bestaudio/best',  # Prefer Opus to avoid re-encoding
 	'noplaylist': True,
 	'skip_download': True,
-	'quiet': False,
-	'verbose': True,
+	'quiet': True,
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
 	'extractor_args': {
@@ -355,7 +354,7 @@ async def play(member: discord.Member, query: str, duration: float):
 			}
 
 		# Play audio from youtube video
-		videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback', bitrate=192)
+		videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback')
 
 		await bot.loop.run_in_executor(None, playAudio, voice, videoSource, duration)
 
