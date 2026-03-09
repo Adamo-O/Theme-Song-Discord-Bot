@@ -77,7 +77,8 @@ YDL_OPTIONS = {
 	'format': 'bestaudio[acodec=opus]/bestaudio[acodec=aac]/bestaudio/best',  # Prefer Opus to avoid re-encoding
 	'noplaylist': True,
 	'skip_download': True,
-	'quiet': True,
+	'quiet': False,
+	'verbose': True,
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
 	'extractor_args': {
