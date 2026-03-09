@@ -77,8 +77,7 @@ YDL_OPTIONS = {
 	'format': 'bestaudio/best',
 	'noplaylist': True,
 	'skip_download': True,
-	'quiet': False,
-	'verbose': True,
+	'quiet': True,
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
 	'extractor_args': {
