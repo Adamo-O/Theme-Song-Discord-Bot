@@ -18,12 +18,15 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install yt-dlp POT provider plugin (manual install for proper plugin registration)
-RUN mkdir -p /root/.yt-dlp/plugins && \
+# Install yt-dlp POT provider plugin
+# Use pip for Python path registration + manual install for yt-dlp plugin directory
+RUN pip install --no-cache-dir bgutil-ytdlp-pot-provider && \
+    mkdir -p /root/.yt-dlp/plugins && \
     curl -sL https://github.com/Brainicism/bgutil-ytdlp-pot-provider/releases/latest/download/bgutil-ytdlp-pot-provider.zip \
     -o /tmp/pot-plugin.zip && \
     unzip /tmp/pot-plugin.zip -d /root/.yt-dlp/plugins/ && \
-    rm /tmp/pot-plugin.zip
+    rm /tmp/pot-plugin.zip && \
+    echo "Installed POT plugin to:" && ls -la /root/.yt-dlp/plugins/
 
 # Copy application code
 COPY . .

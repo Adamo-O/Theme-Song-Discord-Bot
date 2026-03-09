@@ -77,7 +77,8 @@ YDL_OPTIONS = {
 	'format': 'bestaudio/best',
 	'noplaylist': True,
 	'skip_download': True,
-	'quiet': True,
+	'quiet': False,  # Enable verbose output to debug POT plugin
+	'verbose': True,  # Show plugin loading info
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
 	'extractor_args': {
