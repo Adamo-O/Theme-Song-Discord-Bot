@@ -1,4 +1,5 @@
 .env
 CLAUDE.md
 cookies.txt
-TODO.md__pycache__/
+TODO.md
+__pycache__/
