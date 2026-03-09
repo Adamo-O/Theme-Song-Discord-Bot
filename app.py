@@ -74,7 +74,7 @@ print(f'POT Provider URL: {pot_provider_url}', flush=True)
 
 # Options for YoutubeDL
 YDL_OPTIONS = {
-	'format': 'bestaudio/best',
+	'format': 'bestaudio[acodec=opus]/bestaudio[acodec=aac]/bestaudio/best',  # Prefer Opus to avoid re-encoding
 	'noplaylist': True,
 	'skip_download': True,
 	'quiet': True,
@@ -354,7 +354,7 @@ async def play(member: discord.Member, query: str, duration: float):
 			}
 
 		# Play audio from youtube video
-		videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback')
+		videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback', bitrate=192)
 
 		await bot.loop.run_in_executor(None, playAudio, voice, videoSource, duration)
 
