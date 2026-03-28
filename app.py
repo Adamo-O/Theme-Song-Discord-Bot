@@ -97,6 +97,11 @@ default_theme_song_duration = 10.0
 # Cooldown constants
 cooldown_voice_join = 60.0
 
+# Audio cache
+CACHE_DIR = '/tmp/theme_cache'
+MAX_CACHE_FILES = 50
+os.makedirs(CACHE_DIR, exist_ok=True)
+
 # Default user used for confirming bot login via DM
 default_log_user = 318887467707138051
 
@@ -179,9 +184,47 @@ def search(query: str):
 
 	return (info, url, http_headers)
 
-# Download audio from YouTube to a temp file for playback
-# Returns (info, filepath) - filepath is a local file that must be cleaned up by caller
+# Extract YouTube video ID from a URL
+def get_video_id(query: str):
+	match = re.search(r'youtu\.be/([a-zA-Z0-9_-]{11})', query)
+	if match:
+		return match.group(1)
+	match = re.search(r'[?&]v=([a-zA-Z0-9_-]{11})', query)
+	if match:
+		return match.group(1)
+	match = re.search(r'embed/([a-zA-Z0-9_-]{11})', query)
+	if match:
+		return match.group(1)
+	return None
+
+# Evict oldest files from cache when over the limit
+def _evict_cache():
+	files = []
+	for f in os.listdir(CACHE_DIR):
+		path = os.path.join(CACHE_DIR, f)
+		if os.path.isfile(path):
+			files.append((os.path.getmtime(path), path))
+	if len(files) > MAX_CACHE_FILES:
+		files.sort()
+		for _, path in files[:len(files) - MAX_CACHE_FILES]:
+			os.unlink(path)
+			print(f'Evicted from cache: {path}', flush=True)
+
+# Download audio from YouTube, using cache when available
+# Returns (info_dict, filepath)
 def download_audio(query: str):
+	video_id = get_video_id(query)
+
+	# Check cache
+	if video_id:
+		for f in os.listdir(CACHE_DIR):
+			if f.startswith(video_id + '.'):
+				filepath = os.path.join(CACHE_DIR, f)
+				os.utime(filepath)  # Touch for LRU
+				print(f'Cache hit: {filepath}', flush=True)
+				return ({}, filepath)
+
+	# Cache miss — download
 	tmp_dir = tempfile.mkdtemp(prefix='theme_')
 
 	download_opts = {
@@ -216,6 +259,16 @@ def download_audio(query: str):
 				print(f'Downloaded file not found: {filepath}', flush=True)
 				shutil.rmtree(tmp_dir, ignore_errors=True)
 				return (None, None)
+
+			# Move to cache
+			if video_id:
+				ext = os.path.splitext(filepath)[1]
+				cache_path = os.path.join(CACHE_DIR, f'{video_id}{ext}')
+				shutil.move(filepath, cache_path)
+				shutil.rmtree(tmp_dir, ignore_errors=True)
+				_evict_cache()
+				print(f'Cached: {cache_path}', flush=True)
+				return (info, cache_path)
 
 			print(f'Downloaded audio to: {filepath}', flush=True)
 			return (info, filepath)
@@ -411,8 +464,8 @@ async def play(member: discord.Member, query: str, duration: float):
 			except Exception:
 				pass
 	finally:
-		# Clean up temp file
-		if tmp_file and os.path.exists(tmp_file):
+		# Clean up temp files that aren't in the cache
+		if tmp_file and os.path.exists(tmp_file) and not tmp_file.startswith(CACHE_DIR):
 			try:
 				shutil.rmtree(os.path.dirname(tmp_file), ignore_errors=True)
 			except Exception:
