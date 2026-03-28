@@ -81,7 +81,7 @@ YDL_OPTIONS = {
 	'no_warnings': False,
 	'cookiefile': 'cookies.txt',
 	'extractor_args': {
-		'youtube': {'player_client': ['web']},  # Use web client with POT
+		'youtube': {'player_client': ['ios', 'web']},  # Try iOS first (bypasses consent page), fall back to web with POT
 		'youtubepot-bgutilhttp': {'base_url': [pot_provider_url]},  # POT provider endpoint
 	},
 	'js_runtimes': {'node': {}},
