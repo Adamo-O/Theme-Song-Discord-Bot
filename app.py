@@ -354,7 +354,7 @@ async def play(member: discord.Member, query: str, duration: float):
 			}
 
 		# Play audio from youtube video
-		videoSource = await FFmpegOpusAudio.from_probe(source, **FFMPEG_OPTIONS, method='fallback')
+		videoSource = FFmpegOpusAudio(source, **FFMPEG_OPTIONS)
 
 		await bot.loop.run_in_executor(None, playAudio, voice, videoSource, duration)
 
