@@ -35,5 +35,5 @@ RUN pip install --no-cache-dir bgutil-ytdlp-pot-provider && \
 # Copy application code
 COPY . .
 
-# Run the bot
-CMD ["python", "app.py"]
+# Run the POT server and bot together
+CMD ["bash", "start.sh"]
