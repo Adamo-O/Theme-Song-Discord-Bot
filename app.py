@@ -22,6 +22,7 @@ import typing
 import time
 import shutil
 import subprocess
+import tempfile
 
 # from dotenv import load_dotenv
 # load_dotenv()
@@ -178,6 +179,51 @@ def search(query: str):
 
 	return (info, url, http_headers)
 
+# Download audio from YouTube to a temp file for playback
+# Returns (info, filepath) - filepath is a local file that must be cleaned up by caller
+def download_audio(query: str):
+	tmp_dir = tempfile.mkdtemp(prefix='theme_')
+
+	download_opts = {
+		'format': 'bestaudio/best',
+		'noplaylist': True,
+		'quiet': True,
+		'no_warnings': False,
+		'cookiefile': 'cookies.txt',
+		'outtmpl': os.path.join(tmp_dir, '%(id)s.%(ext)s'),
+		'extractor_args': YDL_OPTIONS.get('extractor_args', {}),
+		'js_runtimes': YDL_OPTIONS.get('js_runtimes', {}),
+		'remote_components': YDL_OPTIONS.get('remote_components', []),
+	}
+
+	with YoutubeDL(download_opts) as ydl:
+		try:
+			try:
+				requests.get(query, timeout=5)
+			except requests.exceptions.RequestException:
+				info = ydl.extract_info(f"ytsearch:{query}", download=True)
+				if 'entries' in info and info['entries']:
+					info = info['entries'][0]
+				else:
+					print(f'No search results for: {query}', flush=True)
+					shutil.rmtree(tmp_dir, ignore_errors=True)
+					return (None, None)
+			else:
+				info = ydl.extract_info(query, download=True)
+
+			filepath = ydl.prepare_filename(info)
+			if not os.path.exists(filepath):
+				print(f'Downloaded file not found: {filepath}', flush=True)
+				shutil.rmtree(tmp_dir, ignore_errors=True)
+				return (None, None)
+
+			print(f'Downloaded audio to: {filepath}', flush=True)
+			return (info, filepath)
+		except Exception as e:
+			print(f'yt-dlp download error: {e}', flush=True)
+			shutil.rmtree(tmp_dir, ignore_errors=True)
+			return (None, None)
+
 # Gets theme song of given member from database
 def get_member_theme_song(member: discord.Member):
 	member_obj = users.find_one({"_id": str(member.id)})
@@ -315,11 +361,12 @@ async def play(member: discord.Member, query: str, duration: float):
 	if query is None:
 		return
 
+	tmp_file = None
 	try:
-		# Search for audio on youtube
-		video, source, http_headers = search(query)
-		if video is None or source is None:
-			print(f'Failed to get audio for {member.name}: {query}', flush=True)
+		# Download audio from YouTube to a temp file
+		video, tmp_file = download_audio(query)
+		if video is None or tmp_file is None:
+			print(f'Failed to download audio for {member.name}: {query}', flush=True)
 			return
 
 		voice: discord.VoiceClient = dget(bot.voice_clients, guild=member.guild)
@@ -331,17 +378,11 @@ async def play(member: discord.Member, query: str, duration: float):
 		else:
 			voice = await channel.connect()
 
-		# Build HTTP headers string for FFmpeg
-		headers_str = ''
-		if http_headers:
-			headers_str = ''.join(f'{k}: {v}\r\n' for k, v in http_headers.items())
-
-		# Options for FFmpeg
+		# Options for FFmpeg (no HTTP options needed for local files)
 		url_start_time = re.search(r"\?t=\d+", query)
 
 		if (url_start_time is None):
 			FFMPEG_OPTIONS = {
-				'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -headers "{headers_str}"',
 				'options': '-vn'
 			}
 		else:
@@ -349,12 +390,12 @@ async def play(member: discord.Member, query: str, duration: float):
 			end_time = start_time + duration
 			print(f'start time: {str(datetime.timedelta(seconds=start_time))}\nduration: {str(duration)}\nend time: {str(end_time)}')
 			FFMPEG_OPTIONS = {
-				'before_options': f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -headers "{headers_str}" -ss {str(datetime.timedelta(seconds=start_time))} -accurate_seek',
+				'before_options': f'-ss {str(datetime.timedelta(seconds=start_time))} -accurate_seek',
 				'options': f'-vn -to {str(datetime.timedelta(seconds=end_time))}'
 			}
 
-		# Play audio from youtube video
-		videoSource = FFmpegOpusAudio(source, **FFMPEG_OPTIONS)
+		# Play audio from downloaded file
+		videoSource = FFmpegOpusAudio(tmp_file, **FFMPEG_OPTIONS)
 
 		await bot.loop.run_in_executor(None, playAudio, voice, videoSource, duration)
 
@@ -367,6 +408,13 @@ async def play(member: discord.Member, query: str, duration: float):
 		if voice and voice.is_connected():
 			try:
 				await voice.disconnect()
+			except Exception:
+				pass
+	finally:
+		# Clean up temp file
+		if tmp_file and os.path.exists(tmp_file):
+			try:
+				shutil.rmtree(os.path.dirname(tmp_file), ignore_errors=True)
 			except Exception:
 				pass
 
