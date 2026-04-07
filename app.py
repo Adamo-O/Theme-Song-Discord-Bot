@@ -85,7 +85,11 @@ YDL_OPTIONS = {
 		'youtubepot-bgutilhttp': {'base_url': [pot_provider_url]},  # POT provider endpoint
 	},
 	'remote_components': ['ejs:github'],  # JS challenge solver for n-parameter deobfuscation
-} 
+}
+
+# Add cookies if available (needed alongside POT for audio format access)
+if os.path.exists('cookies.txt'):
+	YDL_OPTIONS['cookiefile'] = 'cookies.txt' 
 
 # Default theme song duration variables
 min_theme_song_duration = 1.0
@@ -232,7 +236,10 @@ def download_audio(query: str):
 		'no_warnings': False,
 		'outtmpl': os.path.join(tmp_dir, '%(id)s.%(ext)s'),
 		'extractor_args': YDL_OPTIONS.get('extractor_args', {}),
+		'remote_components': YDL_OPTIONS.get('remote_components', []),
 	}
+	if 'cookiefile' in YDL_OPTIONS:
+		download_opts['cookiefile'] = YDL_OPTIONS['cookiefile']
 
 	with YoutubeDL(download_opts) as ydl:
 		try:
@@ -275,7 +282,7 @@ def download_audio(query: str):
 # Gets theme song of given member from database
 def get_member_theme_song(member: discord.Member):
 	member_obj = users.find_one({"_id": str(member.id)})
-	if member_obj:
+	if member_obj and "theme_song" in member_obj:
 		print(f'Member {member.name} found in database.')
 		return member_obj["theme_song"]
 
@@ -284,7 +291,7 @@ def get_member_theme_song(member: discord.Member):
 # Gets outro song of given member from database
 def get_member_outro_song(member: discord.Member):
 	member_obj = users.find_one({"_id": str(member.id)})
-	if member_obj:
+	if member_obj and "outro_song" in member_obj:
 		print(f'Member {member.name} found in database.')
 		return member_obj["outro_song"]
 
