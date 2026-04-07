@@ -150,10 +150,7 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # -------------------------------------------
 # Search YoutubeDL for query/url and returns (info, url, http_headers)
 def search(query: str):
-	# Use separate options for extraction — no format filter so we can inspect all available formats
-	extract_opts = {k: v for k, v in YDL_OPTIONS.items() if k != 'format'}
-	extract_opts['format'] = None  # Don't filter formats during extraction
-	with YoutubeDL(extract_opts) as ydl:
+	with YoutubeDL(YDL_OPTIONS) as ydl:
 		try:
 			# Check if query is a URL
 			try:
@@ -171,13 +168,6 @@ def search(query: str):
 		except Exception as e:
 			print(f'yt-dlp extraction error: {e}', flush=True)
 			return (None, None, None)
-
-		# Debug: log available formats
-		formats = info.get('formats', [])
-		audio_formats = [f for f in formats if f.get('acodec') and f.get('acodec') != 'none']
-		print(f'Available formats: {len(formats)} total, {len(audio_formats)} with audio', flush=True)
-		if not audio_formats and formats:
-			print(f'Format types: {[f.get("format_note", f.get("format_id")) for f in formats[:5]]}', flush=True)
 
 		# Get the best audio URL - prefer opus but accept any audio format
 		url = info.get('url')
@@ -241,16 +231,11 @@ def download_audio(query: str):
 	tmp_dir = tempfile.mkdtemp(prefix='theme_')
 
 	download_opts = {
+		**YDL_OPTIONS,
 		'format': 'bestaudio/best',
-		'noplaylist': True,
-		'quiet': True,
-		'no_warnings': False,
+		'skip_download': False,
 		'outtmpl': os.path.join(tmp_dir, '%(id)s.%(ext)s'),
-		'extractor_args': YDL_OPTIONS.get('extractor_args', {}),
-		'remote_components': YDL_OPTIONS.get('remote_components', []),
 	}
-	if 'cookiefile' in YDL_OPTIONS:
-		download_opts['cookiefile'] = YDL_OPTIONS['cookiefile']
 
 	with YoutubeDL(download_opts) as ydl:
 		try:
