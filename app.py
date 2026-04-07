@@ -37,7 +37,7 @@ password = os.environ.get('MONGODB_PASSWORD')
 client = MongoClient(uri, username='admin', password=password)
 
 # -------------------------------------------
-# YouTube cookies (for authentication)
+# YouTube cookies (optional fallback for authentication)
 # -------------------------------------------
 # Write cookies from environment variable to file if present
 youtube_cookies = os.environ.get('YOUTUBE_COOKIES')
@@ -46,7 +46,7 @@ if youtube_cookies:
 		f.write(youtube_cookies)
 	print('YouTube cookies loaded from environment variable', flush=True)
 else:
-	print('WARNING: YOUTUBE_COOKIES environment variable not set', flush=True)
+	print('No YouTube cookies set (using POT provider for authentication)', flush=True)
 
 # Check for required binaries
 node_path = shutil.which('node')
@@ -80,13 +80,10 @@ YDL_OPTIONS = {
 	'skip_download': True,
 	'quiet': True,
 	'no_warnings': False,
-	'cookiefile': 'cookies.txt',
 	'extractor_args': {
 		'youtube': {'player_client': ['web']},  # Use web client with POT
 		'youtubepot-bgutilhttp': {'base_url': [pot_provider_url]},  # POT provider endpoint
 	},
-	'js_runtimes': {'node': {}},
-	'remote_components': ['ejs:github'],
 } 
 
 # Default theme song duration variables
@@ -232,11 +229,8 @@ def download_audio(query: str):
 		'noplaylist': True,
 		'quiet': True,
 		'no_warnings': False,
-		'cookiefile': 'cookies.txt',
 		'outtmpl': os.path.join(tmp_dir, '%(id)s.%(ext)s'),
 		'extractor_args': YDL_OPTIONS.get('extractor_args', {}),
-		'js_runtimes': YDL_OPTIONS.get('js_runtimes', {}),
-		'remote_components': YDL_OPTIONS.get('remote_components', []),
 	}
 
 	with YoutubeDL(download_opts) as ydl:
