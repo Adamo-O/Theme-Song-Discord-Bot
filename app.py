@@ -81,10 +81,11 @@ YDL_OPTIONS = {
 	'quiet': True,
 	'no_warnings': False,
 	'extractor_args': {
-		'youtube': {'player_client': ['default']},  # Let yt-dlp choose the best client
+		'youtube': {},
 		'youtubepot-bgutilhttp': {'base_url': [pot_provider_url]},  # POT provider endpoint
 	},
 	'remote_components': ['ejs:github'],  # JS challenge solver for n-parameter deobfuscation
+	'js_runtimes': {'node': {}},  # Node.js runtime for executing challenge solver scripts
 }
 
 # Add cookies if available (needed alongside POT for audio format access)
