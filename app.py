@@ -124,7 +124,8 @@ bot = commands.Bot(
 	command_prefix="$",
 	description="Plays a unique theme song for each user in the server.",
 	help_command=commands.DefaultHelpCommand(no_category="Theme song commands"),
-	intents=intents
+	intents=intents,
+	chunk_guilds_at_startup=False  # Don't fetch all members on startup to avoid rate limits
 )
 
 # ------------------------------------------
@@ -148,6 +149,17 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 # -------------------------------------------
 # Helper methods
 # -------------------------------------------
+# Find a guild member by name, falling back to API fetch if not in cache
+async def find_member(guild: discord.Guild, name: str):
+	member = guild.get_member_named(name)
+	if member:
+		return member
+	# Not in cache — search via API
+	async for m in guild.fetch_members(limit=None):
+		if m.name == name or (m.nick and m.nick == name):
+			return m
+	return None
+
 # Search YoutubeDL for query/url and returns (info, url, http_headers)
 def search(query: str):
 	with YoutubeDL(YDL_OPTIONS) as ydl:
@@ -634,8 +646,17 @@ async def sync(interaction: discord.Interaction):
 		await interaction.response.send_message("You must be the server owner to use this command.", ephemeral=True)
 
 async def user_autocomplete(interaction: discord.Interaction, current: str):
-	usernames = interaction.guild.members
-	return [discord.app_commands.Choice(name=username.name, value=username.name) for username in usernames if current.lower() in username.name.lower()]
+	# Fetch members matching the query instead of relying on cache
+	if current:
+		members = []
+		async for member in interaction.guild.fetch_members(limit=25):
+			if current.lower() in member.name.lower():
+				members.append(member)
+	else:
+		members = []
+		async for member in interaction.guild.fetch_members(limit=25):
+			members.append(member)
+	return [discord.app_commands.Choice(name=m.name, value=m.name) for m in members[:25]]
 
 # Prints author's theme song
 # If author inputted another user's name, print that user's theme song instead
@@ -647,7 +668,7 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 @discord.app_commands.autocomplete(user=user_autocomplete)
 async def print_theme(interaction: discord.Interaction, user: str):
 	if user:
-		member = interaction.guild.get_member_named(user)
+		member = await find_member(interaction.guild, user)
 		if member is None:
 			await interaction.response.send_message(f'Could not find user {user}.', ephemeral=True)
 		else:
@@ -694,7 +715,7 @@ async def change_theme(interaction: discord.Interaction, song: str, theme_song_d
 @discord.app_commands.autocomplete(user=user_autocomplete)
 @discord.app_commands.default_permissions()
 async def change_theme_other(interaction: discord.Interaction, user: str, song: str, theme_song_duration: float=default_theme_song_duration):
-	member = interaction.guild.get_member_named(user)
+	member = await find_member(interaction.guild, user)
 	if member is None:
 		await interaction.response.send_message(f'Could not find user {user}.', ephemeral=True)
 	else:
@@ -717,7 +738,7 @@ async def change_outro(interaction: discord.Interaction, song: str, outro_durati
 @discord.app_commands.autocomplete(user=user_autocomplete)
 @discord.app_commands.default_permissions()
 async def change_outro_other(interaction: discord.Interaction, user: str, song: str, outro_duration: float=default_theme_song_duration):
-	member = interaction.guild.get_member_named(user)
+	member = await find_member(interaction.guild, user)
 	if member is None:
 		await interaction.response.send_message(f'Could not find user {user}.', ephemeral=True)
 	else:
