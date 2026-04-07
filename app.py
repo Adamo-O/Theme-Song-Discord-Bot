@@ -84,6 +84,7 @@ YDL_OPTIONS = {
 		'youtube': {'player_client': ['web']},  # Use web client with POT
 		'youtubepot-bgutilhttp': {'base_url': [pot_provider_url]},  # POT provider endpoint
 	},
+	'remote_components': ['ejs:github'],  # JS challenge solver for n-parameter deobfuscation
 } 
 
 # Default theme song duration variables
