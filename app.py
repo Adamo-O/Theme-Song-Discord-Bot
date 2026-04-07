@@ -625,8 +625,10 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 async def sync(interaction: discord.Interaction):
 	if interaction.user.id == default_log_user:
 		await interaction.response.defer(ephemeral=True)
+		# Sync globally and to the current guild for immediate availability
 		synced_commands = await bot.tree.sync()
-		await interaction.followup.send(f'Synced {len(synced_commands)} commands.', ephemeral=True)
+		guild_commands = await bot.tree.sync(guild=interaction.guild)
+		await interaction.followup.send(f'Synced {len(synced_commands)} global + {len(guild_commands)} guild commands.', ephemeral=True)
 		await send_message_to_user(f'Synced commands: {synced_commands}')
 	else:
 		await interaction.response.send_message("You must be the server owner to use this command.", ephemeral=True)
