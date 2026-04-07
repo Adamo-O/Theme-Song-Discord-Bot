@@ -81,7 +81,7 @@ YDL_OPTIONS = {
 	'quiet': True,
 	'no_warnings': False,
 	'extractor_args': {
-		'youtube': {'player_client': ['web']},  # Use web client with POT
+		'youtube': {'player_client': ['ios', 'web']},  # Try iOS first (returns audio without full auth), fall back to web
 		'youtubepot-bgutilhttp': {'base_url': [pot_provider_url]},  # POT provider endpoint
 	},
 	'remote_components': ['ejs:github'],  # JS challenge solver for n-parameter deobfuscation
