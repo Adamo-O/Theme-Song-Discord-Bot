@@ -242,50 +242,71 @@ def download_audio(query: str):
 	# Cache miss — download
 	tmp_dir = tempfile.mkdtemp(prefix='theme_')
 
-	download_opts = {
-		**YDL_OPTIONS,
-		'format': 'bestaudio/best',
-		'skip_download': False,
-		'outtmpl': os.path.join(tmp_dir, '%(id)s.%(ext)s'),
-	}
+	# Resolve whether the query is a URL or a search term once, up front.
+	is_url = True
+	try:
+		requests.get(query, timeout=5)
+	except requests.exceptions.RequestException:
+		is_url = False
+	target = query if is_url else f"ytsearch:{query}"
 
-	with YoutubeDL(download_opts) as ydl:
-		try:
+	# Player clients to try, in order. The default (POT-backed web) client works for
+	# most videos, but some videos only expose PO-token-gated audio formats that
+	# return "HTTP Error 403: Forbidden" on download. Falling back to other clients,
+	# which expose non-gated formats, recovers those videos even if the POT provider
+	# can't mint a working token.
+	client_fallbacks = [None, ['tv'], ['ios'], ['android'], ['web_safari']]
+
+	for clients in client_fallbacks:
+		# Build extractor_args per attempt, preserving the POT provider config.
+		extractor_args = {k: dict(v) for k, v in YDL_OPTIONS.get('extractor_args', {}).items()}
+		if clients is not None:
+			extractor_args.setdefault('youtube', {})['player_client'] = clients
+
+		download_opts = {
+			**YDL_OPTIONS,
+			'format': 'bestaudio/best',
+			'skip_download': False,
+			'outtmpl': os.path.join(tmp_dir, '%(id)s.%(ext)s'),
+			'extractor_args': extractor_args,
+		}
+		label = 'default' if clients is None else ','.join(clients)
+
+		with YoutubeDL(download_opts) as ydl:
 			try:
-				requests.get(query, timeout=5)
-			except requests.exceptions.RequestException:
-				info = ydl.extract_info(f"ytsearch:{query}", download=True)
-				if 'entries' in info and info['entries']:
-					info = info['entries'][0]
-				else:
-					print(f'No search results for: {query}', flush=True)
+				info = ydl.extract_info(target, download=True)
+				if not is_url and 'entries' in info:
+					if info['entries']:
+						info = info['entries'][0]
+					else:
+						print(f'No search results for: {query}', flush=True)
+						shutil.rmtree(tmp_dir, ignore_errors=True)
+						return (None, None)
+
+				filepath = ydl.prepare_filename(info)
+				if not os.path.exists(filepath):
+					print(f'Downloaded file not found (client={label}): {filepath}', flush=True)
+					continue
+
+				# Move to cache
+				if video_id:
+					ext = os.path.splitext(filepath)[1]
+					cache_path = os.path.join(CACHE_DIR, f'{video_id}{ext}')
+					shutil.move(filepath, cache_path)
 					shutil.rmtree(tmp_dir, ignore_errors=True)
-					return (None, None)
-			else:
-				info = ydl.extract_info(query, download=True)
+					_evict_cache()
+					print(f'Cached: {cache_path} (client={label})', flush=True)
+					return (info, cache_path)
 
-			filepath = ydl.prepare_filename(info)
-			if not os.path.exists(filepath):
-				print(f'Downloaded file not found: {filepath}', flush=True)
-				shutil.rmtree(tmp_dir, ignore_errors=True)
-				return (None, None)
+				print(f'Downloaded audio to: {filepath} (client={label})', flush=True)
+				return (info, filepath)
+			except Exception as e:
+				print(f'yt-dlp download error (client={label}): {e}', flush=True)
+				continue
 
-			# Move to cache
-			if video_id:
-				ext = os.path.splitext(filepath)[1]
-				cache_path = os.path.join(CACHE_DIR, f'{video_id}{ext}')
-				shutil.move(filepath, cache_path)
-				shutil.rmtree(tmp_dir, ignore_errors=True)
-				_evict_cache()
-				print(f'Cached: {cache_path}', flush=True)
-				return (info, cache_path)
-
-			print(f'Downloaded audio to: {filepath}', flush=True)
-			return (info, filepath)
-		except Exception as e:
-			print(f'yt-dlp download error: {e}', flush=True)
-			shutil.rmtree(tmp_dir, ignore_errors=True)
-			return (None, None)
+	print(f'All download attempts failed for: {query}', flush=True)
+	shutil.rmtree(tmp_dir, ignore_errors=True)
+	return (None, None)
 
 # Gets theme song of given member from database
 def get_member_theme_song(member: discord.Member):
