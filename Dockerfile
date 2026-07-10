@@ -11,8 +11,13 @@ RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     unzip \
-    nodejs \
-    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22 (yt-dlp's EJS n-challenge solver requires Node >= 22.0.0;
+# Debian's apt nodejs is 18.x, which silently fails to solve the challenge and
+# leaves only image formats available). NodeSource ships a supported build.
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
