@@ -97,6 +97,9 @@ min_theme_song_duration = 1.0
 max_theme_song_duration = 20.0
 default_theme_song_duration = 10.0
 
+# Discord caps a select menu at 25 options
+max_select_options = 25
+
 # Cooldown constants
 cooldown_voice_join = 60.0
 
@@ -354,6 +357,27 @@ def get_member_outro_duration(member: discord.Member):
 	users.update_one({"_id": str(member.id)}, { "$set": {"outro_duration": str(default_theme_song_duration)} }, upsert=True)
 	return default_theme_song_duration
 
+# Reads the ?t= start offset out of a YouTube link. Returns 0.0 when there isn't one.
+def get_url_start_time(query: str):
+	url_start_time = re.search(r"\?t=\d+", query)
+	if url_start_time is None:
+		return 0.0
+	return float(url_start_time.group()[3:])
+
+# Clamps a requested duration so playback never runs past the end of the video.
+# Returns the requested duration unchanged when the video length is unknown,
+# which is the case for cycle entries added before video_duration was stored.
+def clamp_duration_to_video(duration: float, video_duration, start_time: float=0.0):
+	if video_duration is None:
+		return float(duration)
+	try:
+		available = float(video_duration) - float(start_time)
+	except (TypeError, ValueError):
+		return float(duration)
+	if available <= 0:
+		return float(duration)
+	return min(float(duration), available)
+
 # DB CHANGE NEEDED: add theme_song_cycle array field to user documents.
 def get_member_song_cycle(member: discord.Member):
 	member_obj = users.find_one({"_id": str(member.id), "theme_song_cycle": { "$exists": True }})
@@ -363,8 +387,11 @@ def get_member_song_cycle(member: discord.Member):
 	print(f'Could not find member song cycle for {member.name}.')
 	return []
 
-def add_to_cycle(member: discord.Member, url: str, duration: float, title: str):
-	song_obj = {"url": str(url), "duration": float(duration), "title": str(title)}
+def add_to_cycle(member: discord.Member, url: str, duration: float, title: str, video_duration=None, start_time: float=0.0):
+	song_obj = {"url": str(url), "duration": float(duration), "title": str(title), "start_time": float(start_time)}
+	# Stored so a later duration change can be clamped without re-fetching the video
+	if video_duration is not None:
+		song_obj["video_duration"] = float(video_duration)
 	users.update_one({"_id": str(member.id)}, { "$push": {"theme_song_cycle": song_obj} }, upsert=True)
 	return song_obj
 
@@ -377,6 +404,30 @@ def remove_from_cycle(member: discord.Member, index: int):
 	removed_song = song_cycle.pop(index)
 	users.update_one({"_id": str(member.id)}, { "$set": {"theme_song_cycle": song_cycle} }, upsert=True)
 	return removed_song
+
+# Sets every cycle song's duration for the given member, clamped per song to the
+# video length. Returns number of songs updated.
+def set_cycle_durations(member: discord.Member, new_duration: float):
+	song_cycle = get_member_song_cycle(member)
+	if not song_cycle:
+		return 0
+	for song in song_cycle:
+		song["duration"] = clamp_duration_to_video(new_duration, song.get("video_duration"), song.get("start_time", 0.0))
+	users.update_one({"_id": str(member.id)}, { "$set": {"theme_song_cycle": song_cycle} }, upsert=True)
+	print(f'Set duration of {len(song_cycle)} cycle songs for {member.name} to {str(new_duration)}.')
+	return len(song_cycle)
+
+# Sets one cycle song's duration by index. Returns the updated song, or None if the
+# index is out of range. The stored duration is clamped to the video length.
+def set_cycle_song_duration(member: discord.Member, index: int, new_duration: float):
+	song_cycle = get_member_song_cycle(member)
+	if not song_cycle or index < 0 or index >= len(song_cycle):
+		return None
+	song = song_cycle[index]
+	song["duration"] = clamp_duration_to_video(new_duration, song.get("video_duration"), song.get("start_time", 0.0))
+	users.update_one({"_id": str(member.id)}, { "$set": {"theme_song_cycle": song_cycle} }, upsert=True)
+	print(f'Set duration of cycle song {str(index + 1)} for {member.name} to {str(song["duration"])}.')
+	return song
 
 def clear_cycle(member: discord.Member):
 	users.update_one({"_id": str(member.id)}, { "$unset": {"theme_song_cycle": ""} }, upsert=True)
@@ -791,21 +842,14 @@ async def add_to_cycle_command(interaction: discord.Interaction, song: str, dura
 		await interaction.followup.send(f'❌ Could not find video: {song}', ephemeral=True)
 		return
 
-	# If video duration is shorter than theme song duration, set it to video duration
-	url_start_time = re.search(r"\?t=\d+", song)
-	if (url_start_time is None):
-		start_time = 0.0
-	else:
-		start_time = float(url_start_time.group()[3:])
-
-	video_duration = video['duration']
-	if duration > float(video_duration):
-		duration = float(video_duration)
-	elif start_time + duration > float(video_duration):
-		duration = float(video_duration) - start_time
+	# If video duration is shorter than theme song duration, set it to video duration.
+	# video_duration is missing/None for livestreams, in which case no clamp is applied.
+	start_time = get_url_start_time(song)
+	video_duration = video.get('duration')
+	duration = clamp_duration_to_video(duration, video_duration, start_time)
 
 	title = video.get('title', 'Unknown title')
-	add_to_cycle(interaction.user, song, duration, title)
+	add_to_cycle(interaction.user, song, duration, title, video_duration, start_time)
 	await interaction.followup.send(f'✅ Added to your cycle:\n🎵 {title}\n🔗 {song}\n⏱ It will play for {str(duration)} seconds.', ephemeral=True)
 
 @bot.tree.command(
@@ -863,6 +907,109 @@ async def clear_cycle_command(interaction: discord.Interaction):
 	clear_cycle(interaction.user)
 	await interaction.response.send_message('🗑️ Your cycle has been cleared.', ephemeral=True)
 
+# Asks for the new duration once a cycle song has been picked
+class CycleDurationModal(discord.ui.Modal, title='Set cycle song duration'):
+	def __init__(self, member: discord.Member, index: int, song: dict):
+		super().__init__()
+		self.member = member
+		self.index = index
+		self.duration_input = discord.ui.TextInput(
+			label='Duration in seconds',
+			placeholder=f'Between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}',
+			default=str(song.get('duration', default_theme_song_duration)),
+			required=True,
+			max_length=6
+		)
+		self.add_item(self.duration_input)
+
+	async def on_submit(self, interaction: discord.Interaction):
+		raw_duration = self.duration_input.value.strip()
+		try:
+			new_duration = float(raw_duration)
+		except ValueError:
+			await interaction.response.send_message(f'💢 "{raw_duration}" is not a number.', ephemeral=True)
+			return
+
+		if new_duration < min_theme_song_duration or new_duration > max_theme_song_duration:
+			await interaction.response.send_message(f'💢 Song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
+			return
+
+		updated_song = set_cycle_song_duration(self.member, self.index, new_duration)
+		if updated_song is None:
+			await interaction.response.send_message('❌ That song is no longer in your cycle. Run `/set-cycle-duration` again.', ephemeral=True)
+			return
+
+		title = updated_song.get('title', 'Unknown title')
+		applied_duration = updated_song.get('duration', new_duration)
+		message = f'✅ Updated:\n🎵 {title}\n⏱ It will now play for {str(applied_duration)} seconds.'
+		if applied_duration < new_duration:
+			message += f'\n⚠️ Shortened from {str(new_duration)}s because the video is not long enough.'
+		await interaction.response.send_message(message, ephemeral=True)
+
+# Dropdown listing the member's cycle so they can pick which song to edit
+class CycleSongSelect(discord.ui.Select):
+	def __init__(self, member: discord.Member, song_cycle: list):
+		self.member = member
+		options = []
+		for index, song in enumerate(song_cycle[:max_select_options]):
+			title = str(song.get('title', 'Unknown title'))
+			duration = song.get('duration', default_theme_song_duration)
+			options.append(discord.SelectOption(
+				label=f'{str(index + 1)}. {title}'[:100],
+				description=f'Currently {str(duration)} seconds'[:100],
+				value=str(index)
+			))
+		super().__init__(placeholder='Choose a song to change the duration of...', min_values=1, max_values=1, options=options)
+
+	async def callback(self, interaction: discord.Interaction):
+		index = int(self.values[0])
+		# Re-read in case the cycle changed while the menu was open
+		song_cycle = get_member_song_cycle(self.member)
+		if index >= len(song_cycle):
+			await interaction.response.send_message('❌ That song is no longer in your cycle. Run `/set-cycle-duration` again.', ephemeral=True)
+			return
+		await interaction.response.send_modal(CycleDurationModal(self.member, index, song_cycle[index]))
+
+class CycleDurationView(discord.ui.View):
+	def __init__(self, interaction: discord.Interaction, member: discord.Member, song_cycle: list):
+		super().__init__(timeout=120)
+		self.interaction = interaction
+		self.member = member
+		self.add_item(CycleSongSelect(member, song_cycle))
+
+	async def interaction_check(self, interaction: discord.Interaction):
+		if interaction.user.id != self.member.id:
+			await interaction.response.send_message('❌ This menu is not yours.', ephemeral=True)
+			return False
+		return True
+
+	async def on_timeout(self):
+		for item in self.children:
+			item.disabled = True
+		try:
+			await self.interaction.edit_original_response(view=self)
+		except discord.HTTPException:
+			pass
+
+@bot.tree.command(
+	name="set-cycle-duration",
+	description="Change the duration of one song in the user's theme song cycle."
+)
+@discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
+async def set_cycle_duration_command(interaction: discord.Interaction):
+	print(f'set_cycle_duration triggered with user: {interaction.user.name}')
+	song_cycle = get_member_song_cycle(interaction.user)
+	if not song_cycle:
+		await interaction.response.send_message('❌ Your cycle is empty. Use `/add-to-cycle` to add songs.', ephemeral=True)
+		return
+
+	prefix = ''
+	if len(song_cycle) > max_select_options:
+		prefix = f'⚠️ Showing the first {str(max_select_options)} of {str(len(song_cycle))} songs (Discord menu limit).\n'
+
+	view = CycleDurationView(interaction, interaction.user, song_cycle)
+	await interaction.response.send_message(f'{prefix}🔁 Pick a song to change its duration:', view=view, ephemeral=True)
+
 @bot.tree.command(
 	name="set-duration",
 	description="Change user's theme song duration",
@@ -873,8 +1020,12 @@ async def change_song_duration(interaction: discord.Interaction, theme_song_dura
 	if float(theme_song_duration) < min_theme_song_duration or float(theme_song_duration) > max_theme_song_duration:
 		await interaction.response.send_message(f'💢 Your song duration must be between {str(min_theme_song_duration)} and {str(max_theme_song_duration)}.', ephemeral=True)
 	else:
-		if set_member_song_duration(interaction.user, theme_song_duration):
-			await interaction.response.send_message(f'✅ Your theme song duration is now {str(theme_song_duration)} seconds.', ephemeral=True)
+		updated_cycle_songs = set_cycle_durations(interaction.user, theme_song_duration)
+		if set_member_song_duration(interaction.user, theme_song_duration) or updated_cycle_songs:
+			message = f'✅ Your theme song duration is now {str(theme_song_duration)} seconds.'
+			if updated_cycle_songs:
+				message += f'\n🔁 Also applied to all {str(updated_cycle_songs)} songs in your cycle.'
+			await interaction.response.send_message(message, ephemeral=True)
 		else:
 			await interaction.response.send_message('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
 
