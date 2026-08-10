@@ -705,18 +705,26 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 	name="sync",
 	description="Sync bot commands (Server owner only)"
 )
-@discord.app_commands.checks.cooldown(1, 3600, key=lambda i: (i.guild_id, i.user.id))
+@discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
 async def sync(interaction: discord.Interaction):
-	if interaction.user.id == default_log_user:
-		await interaction.response.defer(ephemeral=True)
-		# Sync globally and copy to current guild for immediate availability
-		synced_commands = await bot.tree.sync()
-		bot.tree.copy_global_to(guild=interaction.guild)
-		guild_commands = await bot.tree.sync(guild=interaction.guild)
-		await interaction.followup.send(f'Synced {len(synced_commands)} global + {len(guild_commands)} guild commands.', ephemeral=True)
-		await send_message_to_user(f'Synced commands: {synced_commands}')
-	else:
+	if interaction.user.id != default_log_user:
 		await interaction.response.send_message("You must be the server owner to use this command.", ephemeral=True)
+		return
+
+	await interaction.response.defer(ephemeral=True)
+
+	# Commands are registered globally only. A guild-scoped copy would show up in the
+	# picker alongside the global one, so clear any leftovers before syncing. This is a
+	# no-op once they're gone, so it keeps itself clean. Skipped in DMs, where
+	# interaction.guild is None and clear_commands would wipe the global commands.
+	if interaction.guild is not None:
+		bot.tree.clear_commands(guild=interaction.guild)
+		await bot.tree.sync(guild=interaction.guild)
+
+	synced_commands = await bot.tree.sync()
+
+	await interaction.followup.send(f'✅ Synced {str(len(synced_commands))} commands.', ephemeral=True)
+	await send_message_to_user(f'Synced commands: {synced_commands}')
 
 async def user_autocomplete(interaction: discord.Interaction, current: str):
 	# Fetch members matching the query instead of relying on cache
