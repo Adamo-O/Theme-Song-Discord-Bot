@@ -727,6 +727,9 @@ async def sync(interaction: discord.Interaction):
 	await send_message_to_user(f'Synced commands: {synced_commands}')
 
 async def user_autocomplete(interaction: discord.Interaction, current: str):
+	# Member lookup needs a guild, which DMs don't have
+	if interaction.guild is None:
+		return []
 	# Fetch members matching the query instead of relying on cache
 	if current:
 		members = []
@@ -737,7 +740,9 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 		members = []
 		async for member in interaction.guild.fetch_members(limit=25):
 			members.append(member)
-	return [discord.app_commands.Choice(name=m.name, value=m.name) for m in members[:25]]
+	# Show the name people recognize, but submit the username so find_member resolves
+	# it unambiguously even when two members share a nickname
+	return [discord.app_commands.Choice(name=m.display_name, value=m.name) for m in members[:25]]
 
 # Prints author's theme song
 # If author inputted another user's name, print that user's theme song instead
@@ -747,35 +752,44 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 )
 @discord.app_commands.checks.cooldown(1, 60, key=lambda i: (i.guild_id, i.user.id))
 @discord.app_commands.autocomplete(user=user_autocomplete)
-async def print_theme(interaction: discord.Interaction, user: str):
+async def print_theme(interaction: discord.Interaction, user: str=None):
+	# No user given means print the caller's own settings
 	if user:
+		if interaction.guild is None:
+			await interaction.response.send_message('❌ Looking up another user only works in a server.', ephemeral=True)
+			return
 		member = await find_member(interaction.guild, user)
 		if member is None:
 			await interaction.response.send_message(f'Could not find user {user}.', ephemeral=True)
-		else:
-			print(f'print_theme printing theme song of other user {member.name}')
-			theme_song = get_member_theme_song(member)
-			theme_song_duration = get_member_song_duration(member)
-			outro = get_member_outro_song(member)
-			outro_duration = get_member_outro_duration(member)
-			if theme_song and outro:
-				await interaction.response.send_message(f'🎵✨ {member.name}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.\n\n🎵👋 {member.name}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
-			elif theme_song:
-				await interaction.response.send_message(f'🎵✨ {member.name}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
-			elif outro:
-				await interaction.response.send_message(f'🎵👋 {member.name}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
+			return
+		print(f'print_theme printing theme song of other user {member.name}')
 	else:
-		print(f'print_theme triggered with user: {interaction.user.name}')
-		theme_song = get_member_theme_song(interaction.user)
-		theme_song_duration = get_member_song_duration(interaction.user)
-		outro = get_member_outro_song(interaction.user)
-		outro_duration = get_member_outro_duration(interaction.user)
-		if theme_song and outro:
-			await interaction.response.send_message(f'🎵✨ {interaction.user}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.\n\n🎵👋 {member.name}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
-		elif theme_song:
-			await interaction.response.send_message(f'🎵✨ {interaction.user}\'s theme song is {theme_song}\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
-		elif outro:
-			await interaction.response.send_message(f'🎵👋 {interaction.user}\'s outro song is {outro}\n⏱ It will play for {str(outro_duration)} seconds.', ephemeral=True)
+		member = interaction.user
+		print(f'print_theme triggered with user: {member.name}')
+
+	theme_song = get_member_theme_song(member)
+	outro = get_member_outro_song(member)
+
+	# The duration getters write a default back to the database, so only ask for a
+	# duration once we know there's actually a song to play
+	# Same "Your"/"<name>'s" phrasing that /set and /set-outro use
+	is_self = interaction.user.id == member.id
+	username = "Your" if is_self else f'{member.display_name}\'s'
+
+	lines = []
+	if theme_song:
+		lines.append(f'🎵✨ {username} theme song is {theme_song}\n⏱ It will play for {str(get_member_song_duration(member))} seconds.')
+	if outro:
+		lines.append(f'🎵👋 {username} outro song is {outro}\n⏱ It will play for {str(get_member_outro_duration(member))} seconds.')
+
+	if not lines:
+		if is_self:
+			await interaction.response.send_message('❌ You have no theme song or outro set.', ephemeral=True)
+		else:
+			await interaction.response.send_message(f'❌ {member.display_name} has no theme song or outro set.', ephemeral=True)
+		return
+
+	await interaction.response.send_message('\n\n'.join(lines), ephemeral=True)
 
 # Change author's theme song to inputted song
 @bot.tree.command(
@@ -1077,6 +1091,16 @@ async def delete_theme(interaction: discord.Interaction):
 	print(f'delete_theme triggered with user {interaction.user.name}')
 	await interaction.response.send_message('❎ Your theme song has been deleted.', ephemeral=True)
 	delete_member_theme_song(interaction.user)
+
+# -------------------------------------------
+# Command scope
+# -------------------------------------------
+# Every command needs a guild: playback joins a voice channel, member lookup needs a
+# member list, and the cooldowns key on guild_id (which is None in a DM, so every DM
+# caller would share one bucket). Hide them from DMs rather than fail there.
+# Applied after the definitions above so it covers any command added later.
+for command in bot.tree.get_commands():
+	command.guild_only = True
 
 # -------------------------------------------
 # Error Handling
