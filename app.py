@@ -740,9 +740,8 @@ async def user_autocomplete(interaction: discord.Interaction, current: str):
 		members = []
 		async for member in interaction.guild.fetch_members(limit=25):
 			members.append(member)
-	# Show the name people recognize, but submit the username so find_member resolves
-	# it unambiguously even when two members share a nickname
-	return [discord.app_commands.Choice(name=m.display_name, value=m.name) for m in members[:25]]
+	# Usernames are unique, so they can never collide as duplicate choice names
+	return [discord.app_commands.Choice(name=m.name, value=m.name) for m in members[:25]]
 
 # Prints author's theme song
 # If author inputted another user's name, print that user's theme song instead
