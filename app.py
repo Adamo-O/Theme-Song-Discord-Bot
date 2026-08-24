@@ -532,8 +532,17 @@ def playAudio(voice: discord.VoiceClient, videoSource, duration: float):
 	voice.stop() # TODO check if better
 	voice.play(videoSource)
 
+	# voice.play() only starts the player thread; a source that dies immediately (bad
+	# file, ffmpeg exiting on a seek past the end) still looks like a successful call.
+	# Report what the player is actually doing at both ends of the window.
+	print(f'Playback started: is_playing={str(voice.is_playing())} for {str(duration)}s', flush=True)
+
 	# Play for constant amount of time (seconds)
 	time.sleep(duration)
+
+	# False here means the source ran out early - the clip was shorter than the
+	# requested duration, or ffmpeg produced nothing at all
+	print(f'Playback window over: is_playing={str(voice.is_playing())}', flush=True)
 
 	voice.stop()
 
@@ -581,6 +590,8 @@ async def play(member: discord.Member, query: str, duration: float):
 			}
 
 		# Play audio from downloaded file
+		print(f'Playing {tmp_file} ({str(os.path.getsize(tmp_file))} bytes) in '
+		      f'{channel.name} for {str(duration)}s, ffmpeg opts={str(FFMPEG_OPTIONS)}', flush=True)
 		videoSource = FFmpegOpusAudio(tmp_file, **FFMPEG_OPTIONS)
 
 		await bot.loop.run_in_executor(None, playAudio, voice, videoSource, duration)
@@ -650,7 +661,16 @@ async def change_theme_user(interaction: discord.Interaction, user: typing.Union
 	set_member_theme_song(user, song)
 	if set_member_song_duration(user, theme_song_duration):
 		username = "Your" if interaction.user.id == user.id else f'{user.display_name}\'s'
-		await interaction.followup.send(f'✅ {username} theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.', ephemeral=True)
+		reply = f'✅ {username} theme song is now {song}.\n⏱ It will play for {str(theme_song_duration)} seconds.'
+		# A cycle wins over the single theme song on join, so setting a song while one
+		# exists looks like the bot ignored the command. Say so instead of staying quiet.
+		song_cycle = get_member_song_cycle(user)
+		if song_cycle:
+			pronoun = 'you' if interaction.user.id == user.id else 'they'
+			reply += (f'\n\n⚠️ This song will **not** play on join: {"your" if interaction.user.id == user.id else "their"} '
+			          f'theme song cycle has {str(len(song_cycle))} song{"" if len(song_cycle) == 1 else "s"} in it and '
+			          f'a cycle takes priority. Run `/clear-cycle` if {pronoun} want this song to play instead.')
+		await interaction.followup.send(reply, ephemeral=True)
 	else:
 		await interaction.followup.send('❌ Duration not set. Cannot set a duration without a theme song.', ephemeral=True)
 
@@ -742,8 +762,13 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 			cycle_url = selected.get("url")
 			cycle_duration = selected.get("duration", default_theme_song_duration)
 			if cycle_url:
+				# The cycle overrides theme_song, so name the pick - otherwise the log
+				# gives no hint why a song the user just set isn't the one playing
+				print(f'Cycle pick for {member.name}: {selected.get("title") or cycle_url} '
+				      f'({cycle_url}) for {str(cycle_duration)}s, out of {str(len(song_cycle))} songs', flush=True)
 				await play(member, cycle_url, float(cycle_duration))
 				return
+		print(f'No cycle for {member.name}, falling back to single theme song', flush=True)
 
 		url = get_member_theme_song(member)
 		if url is not None:
