@@ -73,6 +73,19 @@ users = client.theme_songsDB.userData
 pot_provider_url = os.environ.get('POT_PROVIDER_URL', 'http://127.0.0.1:4416')
 print(f'POT Provider URL: {pot_provider_url}', flush=True)
 
+# Confirm the POT server is actually up. Without it yt-dlp silently drops to
+# whatever player clients still work unauthenticated, which plays some videos
+# and fails others with "Requested format is not available" - a failure that
+# otherwise only shows up as a yt-dlp warning buried in the extraction logs.
+try:
+	pot_ping = requests.get(f'{pot_provider_url}/ping', timeout=5)
+	pot_ping.raise_for_status()
+	print(f'POT provider reachable: {pot_ping.text.strip()}', flush=True)
+except Exception as e:
+	print(f'WARNING: POT provider unreachable at {pot_provider_url} ({e}). '
+	      'YouTube extraction will fall back to unauthenticated player clients '
+	      'and some videos will fail to play.', flush=True)
+
 # Options for YoutubeDL
 YDL_OPTIONS = {
 	'format': 'bestaudio[acodec=opus]/bestaudio[acodec=aac]/bestaudio/best',  # Prefer Opus to avoid re-encoding
@@ -92,6 +105,40 @@ YDL_OPTIONS = {
 if os.path.exists('cookies.txt'):
 	YDL_OPTIONS['cookiefile'] = 'cookies.txt' 
 
+# Extraction attempts, in order, as (player_clients, send_cookies) pairs. The default
+# (POT-backed) clients work for most videos, but a video that YouTube won't serve to
+# this session fails with "The page needs to be reloaded" or exposes only PO-token-gated
+# formats ("Requested format is not available" / "Only images are available"). Retrying
+# with other clients recovers those.
+#
+# The cookie flag matters as much as the client: yt-dlp drops any client whose
+# SUPPORTS_COOKIES is False as soon as it sees authenticated cookies, logging
+# 'Skipping client "android" since it does not support cookies'. So the android and ios
+# attempts only actually run when the cookiefile is left off, and those two are often
+# the only clients still serving audio formats.
+client_fallbacks = [
+	(None, True),             # Default clients, signed in
+	(None, False),            # Default clients, anonymous
+	(['android'], False),     # Skipped entirely if cookies are sent
+	(['ios'], False),         # Skipped entirely if cookies are sent
+	(['tv'], True),
+	(['web_safari'], True),
+]
+
+# Builds yt-dlp options for one attempt from client_fallbacks. Returns (label, options).
+def build_ydl_options(clients, send_cookies: bool, **overrides):
+	extractor_args = {k: dict(v) for k, v in YDL_OPTIONS.get('extractor_args', {}).items()}
+	if clients is not None:
+		extractor_args.setdefault('youtube', {})['player_client'] = list(clients)
+
+	options = {**YDL_OPTIONS, 'extractor_args': extractor_args, **overrides}
+	if not send_cookies:
+		options.pop('cookiefile', None)
+
+	label = 'default' if clients is None else ','.join(clients)
+	label += '+cookies' if send_cookies and 'cookiefile' in options else '/anon'
+	return (label, options)
+
 # Default theme song duration variables
 min_theme_song_duration = 1.0
 max_theme_song_duration = 20.0
@@ -99,6 +146,11 @@ default_theme_song_duration = 10.0
 
 # Discord caps a select menu at 25 options
 max_select_options = 25
+
+# Budget for the cycle listing in /print. Discord caps a message at 2000 characters
+# and /print can print a cycle, a theme song and an outro in the same reply.
+max_cycle_listing_chars = 1200
+max_cycle_title_chars = 70
 
 # Cooldown constants
 cooldown_voice_join = 60.0
@@ -164,43 +216,56 @@ async def find_member(guild: discord.Guild, name: str):
 	return None
 
 # Search YoutubeDL for query/url and returns (info, url, http_headers)
+# Walks the same client/cookie fallbacks as download_audio, so /set and /add-to-cycle
+# don't reject a video that playback would have been able to fetch.
 def search(query: str):
-	with YoutubeDL(YDL_OPTIONS) as ydl:
-		try:
-			# Check if query is a URL
+	# Resolve whether the query is a URL or a search term once, up front.
+	is_url = True
+	try:
+		requests.get(query, timeout=5)
+	except requests.exceptions.RequestException:
+		is_url = False
+	target = query if is_url else f"ytsearch:{query}"
+
+	for clients, send_cookies in client_fallbacks:
+		label, options = build_ydl_options(clients, send_cookies)
+
+		with YoutubeDL(options) as ydl:
 			try:
-				requests.get(query, timeout=5)
-			except requests.exceptions.RequestException:
-				# Not a URL, search for it
-				info = ydl.extract_info(f"ytsearch:{query}", download=False)
-				if 'entries' in info and info['entries']:
-					info = info['entries'][0]
-				else:
+				info = ydl.extract_info(target, download=False)
+			except Exception as e:
+				print(f'yt-dlp extraction error (client={label}): {e}', flush=True)
+				continue
+
+			if not info:
+				continue
+
+			if not is_url and 'entries' in info:
+				if not info['entries']:
+					# An empty result is the search failing, not the client failing
 					print(f'No search results for: {query}', flush=True)
 					return (None, None, None)
-			else:
-				info = ydl.extract_info(query, download=False)
-		except Exception as e:
-			print(f'yt-dlp extraction error: {e}', flush=True)
-			return (None, None, None)
+				info = info['entries'][0]
 
-		# Get the best audio URL - prefer opus but accept any audio format
-		url = info.get('url')
-		http_headers = info.get('http_headers', {})
-		if not url:
-			for fmt in info.get('formats', []):
-				if fmt.get('acodec') and fmt.get('acodec') != 'none':
-					url = fmt.get('url')
-					http_headers = fmt.get('http_headers', http_headers)
-					if fmt.get('acodec') == 'opus':
-						break  # Prefer opus if available
+			# Get the best audio URL - prefer opus but accept any audio format
+			url = info.get('url')
+			http_headers = info.get('http_headers', {})
+			if not url:
+				for fmt in info.get('formats', []):
+					if fmt.get('acodec') and fmt.get('acodec') != 'none':
+						url = fmt.get('url')
+						http_headers = fmt.get('http_headers', http_headers)
+						if fmt.get('acodec') == 'opus':
+							break  # Prefer opus if available
 
-		if url:
-			print(f'Found audio URL for: {query}', flush=True)
-		else:
-			print(f'Could not find audio URL for: {query}', flush=True)
+			if url:
+				print(f'Found audio URL for: {query} (client={label})', flush=True)
+				return (info, url, http_headers)
 
-	return (info, url, http_headers)
+			print(f'No audio format available (client={label}) for: {query}', flush=True)
+
+	print(f'Could not find audio URL for: {query}', flush=True)
+	return (None, None, None)
 
 # Extract YouTube video ID from a URL
 def get_video_id(query: str):
@@ -253,27 +318,13 @@ def download_audio(query: str):
 		is_url = False
 	target = query if is_url else f"ytsearch:{query}"
 
-	# Player clients to try, in order. The default (POT-backed web) client works for
-	# most videos, but some videos only expose PO-token-gated audio formats that
-	# return "HTTP Error 403: Forbidden" on download. Falling back to other clients,
-	# which expose non-gated formats, recovers those videos even if the POT provider
-	# can't mint a working token.
-	client_fallbacks = [None, ['tv'], ['ios'], ['android'], ['web_safari']]
-
-	for clients in client_fallbacks:
-		# Build extractor_args per attempt, preserving the POT provider config.
-		extractor_args = {k: dict(v) for k, v in YDL_OPTIONS.get('extractor_args', {}).items()}
-		if clients is not None:
-			extractor_args.setdefault('youtube', {})['player_client'] = clients
-
-		download_opts = {
-			**YDL_OPTIONS,
-			'format': 'bestaudio/best',
-			'skip_download': False,
-			'outtmpl': os.path.join(tmp_dir, '%(id)s.%(ext)s'),
-			'extractor_args': extractor_args,
-		}
-		label = 'default' if clients is None else ','.join(clients)
+	for clients, send_cookies in client_fallbacks:
+		label, download_opts = build_ydl_options(
+			clients, send_cookies,
+			format='bestaudio/best',
+			skip_download=False,
+			outtmpl=os.path.join(tmp_dir, '%(id)s.%(ext)s'),
+		)
 
 		with YoutubeDL(download_opts) as ydl:
 			try:
@@ -768,6 +819,7 @@ async def print_theme(interaction: discord.Interaction, user: str=None):
 
 	theme_song = get_member_theme_song(member)
 	outro = get_member_outro_song(member)
+	song_cycle = get_member_song_cycle(member)
 
 	# The duration getters write a default back to the database, so only ask for a
 	# duration once we know there's actually a song to play
@@ -776,7 +828,32 @@ async def print_theme(interaction: discord.Interaction, user: str=None):
 	username = "Your" if is_self else f'{member.display_name}\'s'
 
 	lines = []
-	if theme_song:
+	# A non-empty cycle is what actually plays on join, so it's listed first and the
+	# single theme song below it is labelled as unused. Entries are added until the
+	# character budget runs out, since a long cycle of long titles would otherwise
+	# blow past Discord's 2000-character message limit.
+	if song_cycle:
+		entries = []
+		remaining = max_cycle_listing_chars
+		for i, song in enumerate(song_cycle):
+			title = str(song.get("title") or song.get("url"))
+			if len(title) > max_cycle_title_chars:
+				title = title[:max_cycle_title_chars - 1] + '…'
+			entry = f'{str(i + 1)}. {title} — {str(song.get("duration", default_theme_song_duration))}s'
+			if len(entry) + 1 > remaining:
+				break
+			remaining -= len(entry) + 1
+			entries.append(entry)
+		listing = '\n'.join(entries)
+		if len(entries) < len(song_cycle):
+			listing += f'\n…and {str(len(song_cycle) - len(entries))} more.'
+		plural = '' if len(song_cycle) == 1 else 's'
+		lines.append(f'🎵🔀 {username} theme song cycle has {str(len(song_cycle))} song{plural}, '
+		             f'one plays at random on join:\n{listing}')
+
+	if theme_song and song_cycle:
+		lines.append(f'🎵✨ {username} single theme song is {theme_song}\n⏱ It is not used while the cycle above has songs in it.')
+	elif theme_song:
 		lines.append(f'🎵✨ {username} theme song is {theme_song}\n⏱ It will play for {str(get_member_song_duration(member))} seconds.')
 	if outro:
 		lines.append(f'🎵👋 {username} outro song is {outro}\n⏱ It will play for {str(get_member_outro_duration(member))} seconds.')
