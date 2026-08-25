@@ -1,19 +1,35 @@
 #!/bin/bash
 
-# Start the POT (Proof of Origin Token) HTTP server in the background.
-# yt-dlp needs a PO token to keep YouTube's bot detection from stripping the
-# audio formats out of the player response. The bgutil pip package only ships
-# the yt-dlp *plugin*; the server itself is the Node app built into
-# /opt/bgutil-pot by the Dockerfile.
+# POT (Proof of Origin Token) provider. yt-dlp needs a PO token to keep YouTube's bot
+# detection from stripping the audio formats out of the player response.
+#
+# In production POT_PROVIDER_URL points at a separate Railway service, so there is
+# nothing to start here. The server built into /opt/bgutil-pot by the Dockerfile is a
+# fallback for when no external provider is configured - it is only launched when
+# POT_PROVIDER_URL is unset or points at this container, otherwise it would just be an
+# idle Node process nobody connects to.
+#
+# Note the bgutil pip package ships the yt-dlp *plugin* only; it has no runnable module,
+# which is why the server is a separate build.
 POT_SERVER=${POT_SERVER:-/opt/bgutil-pot/server/build/main.js}
 POT_PORT=${POT_PORT:-4416}
 
-if [ ! -f "$POT_SERVER" ]; then
-    echo "ERROR: POT provider server not found at $POT_SERVER"
+# Host out of POT_PROVIDER_URL: strip the scheme, then the path, keeping any port
+pot_target=${POT_PROVIDER_URL#*://}
+pot_target=${pot_target%%/*}
+case "$pot_target" in
+    ''|localhost*|127.0.0.1*|'[::1]'*) pot_is_local=1 ;;
+    *) pot_is_local=0 ;;
+esac
+
+if [ "$pot_is_local" -eq 0 ]; then
+    echo "POT provider configured at $pot_target - not starting a local one"
+elif [ ! -f "$POT_SERVER" ]; then
+    echo "ERROR: no external POT provider configured and no local server at $POT_SERVER"
     echo "       yt-dlp will run without PO tokens; expect some videos to fail"
     echo "       with 'Requested format is not available'."
 else
-    echo "Starting POT provider server on port $POT_PORT..."
+    echo "No external POT provider configured, starting local server on port $POT_PORT..."
     node "$POT_SERVER" --port "$POT_PORT" &
     POT_PID=$!
 
@@ -36,6 +52,7 @@ else
     fi
 fi
 
-# Start the Discord bot
+# The bot pings POT_PROVIDER_URL itself at startup and logs whether it is reachable,
+# which covers the external provider case as well.
 echo "Starting Discord bot..."
 python app.py
