@@ -1,0 +1,16 @@
+# YouTube extraction stack, kept separate from requirements.txt so it can be bumped
+# without rebuilding the expensive Docker layers above it (apt, Node, the POT server).
+#
+# Pinned to a specific *nightly*. Nightlies ship YouTube fixes within ~1 day; stable
+# releases lag by a median of 18 days and have gone as long as 83. Pinning keeps the
+# running version visible in git and makes a bad nightly a one-commit revert, which an
+# unpinned "latest" URL does not.
+#
+# .github/workflows/yt-dlp-bump.yml bumps this line daily. To roll back a broken
+# nightly, revert that commit - the workflow will not re-apply the same version.
+yt-dlp==2026.8.20.234504.dev0
+
+# Bundles the EJS n-challenge solver locally, avoiding a runtime fetch from GitHub.
+# Left unpinned so it re-resolves whenever the pin above moves; it tracks yt-dlp's
+# challenge solving and the two are meant to stay in step.
+yt-dlp-ejs

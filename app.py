@@ -56,6 +56,14 @@ if node_path:
 else:
 	print('WARNING: Node.js not found - yt-dlp may fail to extract YouTube audio', flush=True)
 
+# yt-dlp is pinned to a nightly and bumped by CI, so the running version is the first
+# thing worth knowing when extraction starts failing
+try:
+	from yt_dlp.version import __version__ as ytdlp_version
+	print(f'yt-dlp version: {ytdlp_version}', flush=True)
+except Exception as e:
+	print(f'WARNING: could not read yt-dlp version ({e})', flush=True)
+
 ffmpeg_path = shutil.which('ffmpeg')
 if ffmpeg_path:
 	result = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True)

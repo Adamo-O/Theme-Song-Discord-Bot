@@ -1,0 +1,50 @@
+name: Bump yt-dlp nightly
+
+# YouTube breaks yt-dlp extraction every few weeks. Nightlies carry the fix within a
+# day or so; stable releases lag by a median of 18 days and have gone as long as 83.
+# This keeps the pin in requirements-ytdlp.txt current so the bot self-heals, while
+# still recording every version change in git so a bad nightly can be reverted.
+on:
+  schedule:
+    # Daily at 06:00 UTC. Nightlies are not strictly nightly, so most runs no-op.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+# A queued run would only redo what the running one already did
+concurrency:
+  group: yt-dlp-bump
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Resolve latest nightly
+        run: python scripts/bump_ytdlp.py
+
+      - name: Commit and push
+        run: |
+          if git diff --quiet -- requirements-ytdlp.txt; then
+            echo "No change - already on the latest nightly"
+            exit 0
+          fi
+
+          version=$(sed -n 's/^yt-dlp==//p' requirements-ytdlp.txt)
+          git diff -- requirements-ytdlp.txt
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add requirements-ytdlp.txt
+          git commit -m "Bump yt-dlp to ${version}" \
+            -m "Automated nightly bump. Revert this commit to roll back a nightly that
+          breaks extraction; the workflow will not re-apply the same version."
+          git push

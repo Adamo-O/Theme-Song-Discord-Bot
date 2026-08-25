@@ -59,6 +59,13 @@ RUN git clone --single-branch --depth 1 --branch ${POT_PROVIDER_VERSION} \
     rm -rf /opt/bgutil-pot/.git && \
     test -f /opt/bgutil-pot/server/build/main.js
 
+# yt-dlp goes last, in its own layer. It is pinned to a nightly and bumped roughly
+# daily by .github/workflows/yt-dlp-bump.yml, so keeping it below the apt, Node and
+# POT server layers means a bump rebuilds only this step instead of the whole image.
+COPY requirements-ytdlp.txt .
+RUN pip install --no-cache-dir -r requirements-ytdlp.txt && \
+    yt-dlp --version
+
 # Copy application code
 COPY . .
 
