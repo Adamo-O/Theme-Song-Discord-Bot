@@ -8,7 +8,7 @@
 #
 # .github/workflows/yt-dlp-bump.yml bumps this line daily. To roll back a broken
 # nightly, revert that commit - the workflow will not re-apply the same version.
-yt-dlp==2026.8.29.232711.dev0
+yt-dlp==2026.8.30.232658.dev0
 
 # Bundles the EJS n-challenge solver locally, avoiding a runtime fetch from GitHub.
 # Left unpinned so it re-resolves whenever the pin above moves; it tracks yt-dlp's
