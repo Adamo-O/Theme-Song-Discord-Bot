@@ -293,13 +293,21 @@ def _evict_cache():
 	files = []
 	for f in os.listdir(CACHE_DIR):
 		path = os.path.join(CACHE_DIR, f)
-		if os.path.isfile(path):
-			files.append((os.path.getmtime(path), path))
+		# Downloads run in parallel threads, so another eviction may remove a file
+		# between listing and stat/unlink
+		try:
+			if os.path.isfile(path):
+				files.append((os.path.getmtime(path), path))
+		except FileNotFoundError:
+			pass
 	if len(files) > MAX_CACHE_FILES:
 		files.sort()
 		for _, path in files[:len(files) - MAX_CACHE_FILES]:
-			os.unlink(path)
-			print(f'Evicted from cache: {path}', flush=True)
+			try:
+				os.unlink(path)
+				print(f'Evicted from cache: {path}', flush=True)
+			except FileNotFoundError:
+				pass
 
 # Download audio from YouTube, using cache when available
 # Returns (info_dict, filepath)
@@ -564,18 +572,44 @@ async def play(member: discord.Member, query: str, duration: float):
 	if query is None:
 		return
 
+	# The member can leave voice before we get here (e.g. /outro after already leaving)
+	if member.voice is None or member.voice.channel is None:
+		print(f'Skipping playback for {member.name}: not in a voice channel', flush=True)
+		return
+	channel = member.voice.channel
+
+	# Without these, connect() doesn't fail fast - Discord ignores the request and the
+	# handshake sits for 30s before "Timed out connecting to voice". Check up front so
+	# we don't download a song we can't play.
+	perms = channel.permissions_for(member.guild.me)
+	missing = [name for name in ('view_channel', 'connect', 'speak') if not getattr(perms, name)]
+	if missing:
+		print(f'Skipping playback for {member.name}: missing {", ".join(missing)} in channel '
+		      f'{channel.id} ({channel.name}) of {member.guild.name}', flush=True)
+		return
+	if channel.user_limit and len(channel.members) >= channel.user_limit and not perms.move_members:
+		print(f'Skipping playback for {member.name}: channel {channel.id} is full', flush=True)
+		return
+
 	tmp_file = None
 	try:
-		# Download audio from YouTube to a temp file
-		video, tmp_file = download_audio(query)
+		# Download audio from YouTube to a temp file. yt-dlp is blocking, so it runs in a
+		# thread - on the event loop it stalls every other guild's joins and commands
+		# (and the gateway heartbeat) for as long as the download and fallbacks take.
+		video, tmp_file = await asyncio.to_thread(download_audio, query)
 		if video is None or tmp_file is None:
 			print(f'Failed to download audio for {member.name}: {query}', flush=True)
 			return
 
+		# Re-read: the member may have left or moved during the download
+		if member.voice is None or member.voice.channel is None:
+			print(f'Skipping playback for {member.name}: left voice during download', flush=True)
+			return
+		channel = member.voice.channel
+
 		voice: discord.VoiceClient = dget(bot.voice_clients, guild=member.guild)
 
 		# Join the channel that the member is connected to
-		channel = member.voice.channel
 		if voice and voice.is_connected():
 			await voice.move_to(channel)
 		else:
@@ -607,7 +641,8 @@ async def play(member: discord.Member, query: str, duration: float):
 		await voice.disconnect()
 
 	except Exception as e:
-		print(f'Error playing audio for {member.name}: {e}', flush=True)
+		# repr, not str: TimeoutError and friends stringify to an empty message
+		print(f'Error playing audio for {member.name}: {e!r}', flush=True)
 		# Ensure we disconnect if connected
 		voice = dget(bot.voice_clients, guild=member.guild)
 		if voice and voice.is_connected():
@@ -647,7 +682,7 @@ async def change_theme_user(interaction: discord.Interaction, user: typing.Union
 		return
 
 	# Search for the video first to validate it exists
-	video, source, _ = search(song)
+	video, source, _ = await asyncio.to_thread(search, song)
 	if video is None or source is None:
 		await interaction.followup.send(f'❌ Could not find video: {song}', ephemeral=True)
 		return
@@ -697,7 +732,7 @@ async def change_outro_user(interaction: discord.Interaction, user: typing.Union
 		return
 
 	# Search for the video first to validate it exists
-	video, source, _ = search(song)
+	video, source, _ = await asyncio.to_thread(search, song)
 	if video is None or source is None:
 		await interaction.followup.send(f'❌ Could not find video: {song}', ephemeral=True)
 		return
@@ -968,7 +1003,7 @@ async def add_to_cycle_command(interaction: discord.Interaction, song: str, dura
 		return
 
 	# Search for the video first to validate it exists
-	video, source, _ = search(song)
+	video, source, _ = await asyncio.to_thread(search, song)
 	if video is None or source is None:
 		await interaction.followup.send(f'❌ Could not find video: {song}', ephemeral=True)
 		return
